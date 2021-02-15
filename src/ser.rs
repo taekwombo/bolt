@@ -421,55 +421,99 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
 
 #[cfg(test)]
 mod tests {
-    macro_rules! eq_bytes {
-        ($input_ref:expr, $arr:expr) => {
-            assert_eq!(to_bytes(&$input_ref).unwrap(), $arr)
+    macro_rules! marked_vec {
+        ([$($elems:expr),*], [$elem:literal; $len:literal]) => {
+            {
+                let mut arr = vec![$($elems),*];
+                for i in 0..$len {
+                    arr.push($elem);
+                }
+                arr
+            }
+        };
+
+        ([$($elems:expr),*], $($vec:expr),*) => {
+            {
+                let mut arr = vec![$($elems),*];
+                $(arr.append(&mut $vec.into_iter().flatten().collect());)*
+                arr
+            }
+        };
+    }
+
+    macro_rules! assert_bytes {
+        ($($to_ser:expr => $expected:expr),* $(,)*) => {
+            $(
+                assert_eq!(to_bytes(&$to_ser).unwrap(), $expected);
+            )*
         }
     }
 
     use super::*;
     use serde_derive::Serialize;
+    use serde_bytes::Bytes;
+    use super::super::marker_bytes::*;
+
+    #[derive(Serialize)]
+    struct NewType<T: Serialize>(T);
+
+    #[derive(Serialize)]
+    struct TupleStruct<T: Serialize, Y: Serialize>(T, Y);
+
+    #[derive(Serialize)]
+    struct List<T: Serialize>(Vec<T>);
 
     #[test]
-    fn serialize_primitive_values() {
-        #[derive(Serialize)]
-        struct Test<T: Serialize>(T);
+    fn serialize_primitive_newtype() {
+        assert_bytes! {
+            NewType(127) => [INT_8, 127],
+            NewType(-128) => [INT_8, 128],
+            NewType(200) => [INT_16, 0, 200],
+            NewType(-200) => [INT_16, 255, 56],
+            NewType(-129) => [INT_16, 255, 127],
+            NewType(100000) => [INT_32, 0, 1, 134, 160],
+            NewType(-100000) => [INT_32, 255, 254, 121, 96],
+            NewType(3000000000u64) => [INT_64, 0, 0, 0, 0, 178, 208, 94, 0],
+            NewType(-3000000000i64) => [INT_64, 255, 255, 255, 255, 77, 47, 162, 0],
+            NewType(100f64) => [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0],
+            NewType(100f32) => [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0],
+            NewType("11111") => [TINY_STRING + 5, 49, 49, 49, 49, 49],
+            NewType('1') => [TINY_STRING + 1, 49],
+            NewType(String::from("11111")) => [TINY_STRING + 5, 49, 49, 49, 49, 49],
+            NewType("1".repeat(16)) => marked_vec!([STRING_8, 16], [49; 16]),
+            NewType::<Option<u8>>(None) => [NULL],
+            NewType(true) => [TRUE],
+            NewType(false) => [FALSE],
+        };
 
-        eprintln!("{:?}", to_bytes(&Test(127i8)));
+    }
 
-        // #[derive(Serialize)]
-        // struct Test2<'a> {
-        //     key: &'a str
-        // }
+    #[test]
+    fn serialize_tuple_struct() {
+        assert_bytes! {
+            TupleStruct(-128, 128) => [TINY_LIST + 2, INT_8, 128, INT_16, 0, 128],
+            TupleStruct(true, String::from("1")) => [TINY_LIST + 2, TRUE, TINY_STRING + 1, 49],
+            TupleStruct::<Option<u8>, Option<u8>>(None, None) => [TINY_LIST + 2, NULL, NULL],
+        };
+    }
 
-        // #[derive(Serialize)]
-        // enum Value {
-        //     Arr([f64; 2]),
-        //     U8(u8)
-        // }
-
-        // #[derive(Serialize)]
-        // struct Test1 {
-        //     en: Value,
-        // }
-
-        // eq_bytes!(Test2 { key: "value" }, [161, 131, 107, 101, 121, 133, 118, 97, 108, 117, 101]);
-        // eq_bytes!(Test2 { key: "" }, [161, 131, 107, 101, 121, 128]);
-        // eq_bytes!(Test1 { en: Value::Arr([1.0, 2.0]) }, [161, 130, 101, 110, 146, 193, 63, 240, 0, 0, 0, 0, 0, 0, 193, 64, 0, 0, 0, 0, 0, 0, 0]);
-        // eq_bytes!(Test1 { en: Value::U8(16) }, [161, 130, 101, 110, 200, 16]);
+    #[test]
+    fn serialize_list () {
+        assert_bytes! {
+            List(vec![1; 4]) => marked_vec!([TINY_LIST + 4], vec![vec![INT_8, 1]; 4]),
+            List(vec![NewType(String::from("1".repeat(12)))]) => marked_vec!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
+        };
     }
 
     // fn test_enum () {}
 
-    // fn test_tuple () {}
-
     // fn test_map () {}
 
-    // fn test_list () {}
-
-    // fn test_num () {}
-
-    // fn test_str () {}
-
-    // fn test_bytes () {}
+    #[test]
+    fn serialize_bytes() {
+        assert_bytes! {
+            NewType(Bytes::new(&[10, 20, 30, 40, 50])) => [BYTES_8, 5, 10, 20, 30, 40, 50],
+            NewType(Bytes::new(&[0; 256])) => marked_vec!([BYTES_16, 1, 0], [0; 256]),
+        }
+    }
 }
