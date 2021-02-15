@@ -7,4 +7,4 @@ mod error;
 mod parse;
 mod value;
 mod ser;
-// mod de;
+mod de;

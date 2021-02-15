@@ -337,16 +337,35 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.deserialize_seq(visitor)
     }
 
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>
+    {
+        let map_size = self.parse_map()?;
+        visitor.visit_map(MapAccess {
+            de: self,
+            size: map_size
+        })
+    }
+
+    fn deserialize_struct<V>(self, _name: &str, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>
+    {
+        let map_size = self.parse_map()?;
+        visitor.visit_map(MapAccess {
+            de: self,
+            size: map_size
+        })
+    }
 
 
-
-    /*
-    = note: `deserialize_tuple` from trait: `fn(Self, usize, V) -> std::result::Result<<V as serde::de::Visitor<'de>>::Value, <Self as serde::de::Deserializer<'de>>::Error>`
-    = note: `deserialize_tuple_struct` from trait: `fn(Self, &'static str, usize, V) -> std::result::Result<<V as serde::de::Visitor<'de>>::Value, <Self as serde::de::Deserializer<'de>>::Error>`
-    = note: `deserialize_map` from trait: `fn(Self, V) -> std::result::Result<<V as serde::de::Visitor<'de>>::Value, <Self as serde::de::Deserializer<'de>>::Error>`
-    = note: `deserialize_struct` from trait: `fn(Self, &'static str, &'static [&'static str], V) -> std::result::Result<<V as serde::de::Visitor<'de>>::Value, <Self as serde::de::Deserializer<'de>>::Error>`
-    = note: `deserialize_enum` from trait: `fn(Self, &'static str, &'static [&'static str], V) -> std::result::Result<<V as serde::de::Visitor<'de>>::Value, <Self as serde::de::Deserializer<'de>>::Error>`
-    */
+    fn deserialize_enum<V>(self, _name: &str, _variants: &'static [&'static str], visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>
+    {
+        unimplemented!()
+    }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
@@ -377,8 +396,41 @@ impl<'de, 'a> de::SeqAccess<'de> for SeqAccess<'a, 'de> {
     where
         T: de::DeserializeSeed<'de>
     {
-        // let marker = self.de.parse_int()?;
-        // Ok(Some(seed.deserialize(&mut *self.de)?))
+        if self.size == 0 {
+            return Ok(None);
+        }
+
+        let val = seed.deserialize(&mut *self.de)?;
+        self.size -= 1;
+        Ok(Some(val))
+    }
+}
+
+struct MapAccess<'a, 'de: 'a> {
+    de: &'a mut Deserializer<'de>,
+    size: usize,
+}
+
+impl<'de, 'a> de::MapAccess<'de> for MapAccess<'a, 'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    where
+        K: de::DeserializeSeed<'de>,
+    {
+        if self.size == 0 {
+            return Ok(None);
+        }
+
+        let val = seed.deserialize(&mut *self.de)?;
+        self.size -= 1;
+        Ok(Some(val))
     }
 
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    where
+        V: de::DeserializeSeed<'de>
+    {
+        seed.deserialize(&mut *self.de)
+    }
 }
