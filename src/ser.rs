@@ -42,49 +42,41 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_i8(self, value: i8) -> Result<Self::Ok> {
-        println!("serialize_i8: {}", value);
         self.output.append(&mut Marker::I64(i64::from(value)).to_vec()?);
         Ok(())
     }
 
     fn serialize_i16(self, value: i16) -> Result<Self::Ok> {
-        println!("serialize_i16: {}", value);
         self.output.append(&mut Marker::I64(i64::from(value)).to_vec()?);
         Ok(())
     }
 
     fn serialize_i32(self, value: i32) -> Result<Self::Ok> {
-        println!("serialize_i32: {}", value);
         self.output.append(&mut Marker::I64(i64::from(value)).to_vec()?);
         Ok(())
     }
 
     fn serialize_i64(self, value: i64) -> Result<Self::Ok> {
-        println!("serialize_i64: {}", value);
         self.output.append(&mut Marker::I64(value).to_vec()?);
         Ok(())
     }
 
     fn serialize_u8(self, value: u8) -> Result<Self::Ok> {
-        println!("serialize_u8: {:?}", value);
         self.output.append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
         Ok(())
     }
 
     fn serialize_u16(self, value: u16) -> Result<Self::Ok> {
-        println!("serialize_u16: {}", value);
         self.output.append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
         Ok(())
     }
 
     fn serialize_u32(self, value: u32) -> Result<Self::Ok> {
-        println!("serialize_u32: {}", value);
         self.output.append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
         Ok(())
     }
 
     fn serialize_u64(self, value: u64) -> Result<Self::Ok> {
-        println!("serialize_u64: {}", value);
         let val_int = i64::try_from(value).unwrap();
         self.output.append(&mut Marker::I64(val_int).to_vec()?);
         Ok(())
@@ -100,26 +92,22 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_char(self, value: char) -> Result<Self::Ok> {
-        println!("serialize_char: {}", value);
         self.serialize_str(&value.to_string())
     }
 
     fn serialize_str(self, value: &str) -> Result<Self::Ok> {
-        println!("serialize_str: {}", value);
         self.output.append(&mut Marker::String(value.len()).to_vec()?);
         self.output.extend_from_slice(&value.as_bytes());
         Ok(())
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Self::Ok> {
-        println!("serialize_bytes: {:?}", value);
         self.output.append(&mut Marker::Bytes(value.len()).to_vec()?);
         self.output.extend_from_slice(value);
         Ok(())
     }
 
     fn serialize_none(self) -> Result<Self::Ok> {
-        println!("serialize_none");
         self.output.append(&mut Marker::Null.to_vec()?);
         Ok(())
     }
@@ -132,17 +120,14 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_unit(self) -> Result<Self::Ok> {
-        println!("serialize_unit");
         self.serialize_none()
     }
 
     fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok> {
-        println!("serialize_unit_struct: {}", name);
         self.serialize_unit()
     }
 
     fn serialize_unit_variant(self, name: &'static str, variant_index: u32, variant: &'static str) -> Result<Self::Ok> {
-        println!("serialize_unit_variant: name={}, variant_index={}, variant={}", name, variant_index, variant);
         self.serialize_unit()
     }
 
@@ -150,7 +135,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     where
         T: ?Sized + Serialize
     {
-        println!("serialize_newtype_struct: name={}", name);
         value.serialize(self)
     }
 
@@ -158,13 +142,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     where
         T: ?Sized + Serialize
     {
-        println!("serialize_newtype_variant: name={}", name);
         // TODO: Is it the right way to serialize newtype_variant?
         value.serialize(self)
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        println!("serialize_seq: len={:?}", len);
         if let Some(len) = len {
             self.output.append(&mut Marker::List(len).to_vec()?);
             Ok(Compound::new_static(self))
@@ -181,7 +163,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct> {
-        println!("serialize_tuple_struct: name={}, len={}", name, len);
         // TODO: How to serialize? List? Map with {{name}} key -> List value?
         // For simplicity serialize as list
         if name == STRUCTURE_NAME {
@@ -193,14 +174,12 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_tuple_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeTupleVariant> {
-        println!("serialize_tuple_variant: name={}, variant_index={}, variant={}, len={}", name, variant_index, variant, len);
         // TODO: How to serialize?
         self.output.append(&mut Marker::List(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
-        println!("serialize_map: {:?}", len);
         if let Some(len) = len {
             self.output.append(&mut Marker::Map(len).to_vec()?);
             Ok(Compound::new_static(self))
@@ -210,13 +189,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        println!("serialize_struct: {} - {}", name, len);
         self.output.append(&mut Marker::Map(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
 
     fn serialize_struct_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeStructVariant> {
-        println!("serialize_struct_variant: name={}, variant_index={}, variant={}, len={}", name, variant_index, variant, len);
         self.output.append(&mut Marker::Map(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
@@ -264,7 +241,6 @@ impl<'a> ser::SerializeSeq for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("Compound<ser::SerializeSeq>::serialize_element");
         let ser = match self {
             Compound::StaticSized(ser) => ser,
             Compound::DynSized { ser, marker, .. } => {
@@ -313,7 +289,6 @@ impl<'a> ser::SerializeTupleStruct for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("SerializeTupleStruct::serialize_field");
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
@@ -338,7 +313,6 @@ impl<'a> ser::SerializeTupleVariant for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("SerializeTupleVariant::serialize_field");
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
@@ -363,7 +337,6 @@ impl<'a> ser::SerializeMap for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("SerializeMap::serialize_key");
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
@@ -378,7 +351,6 @@ impl<'a> ser::SerializeMap for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("SerializeMap::serialize_value");
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
@@ -403,7 +375,6 @@ impl<'a> ser::SerializeStruct for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("SerializeStruct::serialize_field: key={}", key);
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
@@ -430,7 +401,6 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
     where
         T: ?Sized + Serialize
     {
-        println!("SerializeStructVariant::serialize_field");
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
@@ -444,7 +414,6 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
     }
 
     fn end(mut self) -> Result<()> {
-        println!("SerializeStructVariant::end");
         &mut self.end_state();
         Ok(())
     }
@@ -462,27 +431,32 @@ mod tests {
     use serde_derive::Serialize;
 
     #[test]
-    fn test_ser_struct() {
+    fn serialize_primitive_values() {
         #[derive(Serialize)]
-        struct Test<'a> {
-            key: &'a str
-        }
+        struct Test<T: Serialize>(T);
 
-        #[derive(Serialize)]
-        enum Value {
-            Arr([f64; 2]),
-            U8(u8)
-        }
+        eprintln!("{:?}", to_bytes(&Test(127i8)));
 
-        #[derive(Serialize)]
-        struct Test1 {
-            en: Value,
-        }
+        // #[derive(Serialize)]
+        // struct Test2<'a> {
+        //     key: &'a str
+        // }
 
-        eq_bytes!(Test { key: "value" }, [161, 131, 107, 101, 121, 133, 118, 97, 108, 117, 101]);
-        eq_bytes!(Test { key: "" }, [161, 131, 107, 101, 121, 128]);
-        eq_bytes!(Test1 { en: Value::Arr([1.0, 2.0]) }, [161, 130, 101, 110, 146, 193, 63, 240, 0, 0, 0, 0, 0, 0, 193, 64, 0, 0, 0, 0, 0, 0, 0]);
-        eq_bytes!(Test1 { en: Value::U8(16) }, [161, 130, 101, 110, 200, 16]);
+        // #[derive(Serialize)]
+        // enum Value {
+        //     Arr([f64; 2]),
+        //     U8(u8)
+        // }
+
+        // #[derive(Serialize)]
+        // struct Test1 {
+        //     en: Value,
+        // }
+
+        // eq_bytes!(Test2 { key: "value" }, [161, 131, 107, 101, 121, 133, 118, 97, 108, 117, 101]);
+        // eq_bytes!(Test2 { key: "" }, [161, 131, 107, 101, 121, 128]);
+        // eq_bytes!(Test1 { en: Value::Arr([1.0, 2.0]) }, [161, 130, 101, 110, 146, 193, 63, 240, 0, 0, 0, 0, 0, 0, 193, 64, 0, 0, 0, 0, 0, 0, 0]);
+        // eq_bytes!(Test1 { en: Value::U8(16) }, [161, 130, 101, 110, 200, 16]);
     }
 
     // fn test_enum () {}

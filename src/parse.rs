@@ -4,10 +4,11 @@ use super::marker_bytes::*;
 
 type MarkerHint = (Marker, usize);
 
+#[derive(Debug)]
 pub struct ByteReader<'a> {
-    bytes: &'a [u8],
+    pub bytes: &'a [u8],
     pub index: usize,
-    peeked: Option<Marker>,
+    pub peeked: Option<Marker>,
 }
 
 // peek_marker -> Result<Marker>
@@ -43,7 +44,7 @@ impl<'a> ByteReader<'a> {
             Marker::True | Marker::False | Marker::Null | Marker::EOS => {
                 self.index += 1;
             }
-            _ => unimplemented!()
+            _ => {}
         }
     }
 
@@ -196,7 +197,7 @@ mod tests {
 
     macro_rules! assert_try_peek {
         ($bytes:expr, $marker:expr) => {
-            assert_eq!($marker, ByteReader { bytes: $bytes, index: 0 }.peek_marker().unwrap());
+            assert_eq!($marker, ByteReader { bytes: $bytes, index: 0, peeked: None }.peek_marker().unwrap());
         }
     }
 

@@ -96,23 +96,22 @@ impl Default for Value {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    #[test]
-    fn value_test () {
-        let s = Structure(vec![
-            Value::Null,
-            Value::List(vec![
-                Value::String("SIEMANKO".into()),
-                Value::String("WITAM".into()),
-                Value::String("W".into()),
-                Value::String("MOJEJ".into()),
-                Value::String("KUCHNI".into()),
-            ])
-        ]);
-
-        println!("SERIALIZED: {:?}", super::super::ser::to_bytes(&s).unwrap());
-    }
-}
+//     #[test]
+//     fn value_test () {
+//         let s = Structure(vec![
+//             Value::Null,
+//             Value::List(vec![
+//                 Value::String("SIEMANKO".into()),
+//                 Value::String("WITAM".into()),
+//                 Value::String("W".into()),
+//                 Value::String("MOJEJ".into()),
+//                 Value::String("KUCHNI".into()),
+//             ])
+//         ]);
+//         println!("SERIALIZED: {:?}", super::super::ser::to_bytes(&s).unwrap());
+//     }
+// }

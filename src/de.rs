@@ -3,8 +3,32 @@ use super::marker::{Marker};
 use super::error::{Error, ErrorCode, Result};
 use super::parse::ByteReader;
 
+pub fn from_bytes<'de, T> (bytes: &'de [u8]) -> Result<T>
+where
+    T: Deserialize<'de>
+{
+    let mut de = Deserializer::new(bytes);
+    let mut value = de::Deserialize::deserialize(&mut de)?;
+        println!("{:?}", de);
+    // TODO: Should ensure all bytes were parsed
+    Ok(value)
+}
+
+#[derive(Debug)]
 pub struct Deserializer<'de> {
     read: ByteReader<'de>,
+}
+
+impl<'de> Deserializer<'de> {
+    pub fn new(bytes: &'de [u8]) -> Self {
+        Self {
+            read: ByteReader {
+                bytes,
+                index: 0,
+                peeked: None,
+            }
+        }
+    }
 }
 
 impl<'de> Deserializer<'de> {
@@ -136,17 +160,6 @@ impl<'de> Deserializer<'de> {
             _ => Err(Error::from_code(ErrorCode::ExpectedListMarker))
         }
     }
-}
-
-pub fn from_bytes<'a, T> (source: &'a [u8]) -> Result<T>
-where
-    T: Deserialize<'a>
-{
-    let mut deserializer = Deserializer {
-        read: ByteReader::new(source)
-    };
-
-    Err(Error::make("Unimplemented!"))
 }
 
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
@@ -378,9 +391,10 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        // TODO: Inspect
-        // try!(self.ignore_value());
-        visitor.visit_unit()
+        // TODO: Check if this function can be invoked in the middle of parsing map.
+        // This would consume either key or value of a map.
+        // visitor.consume_any()?;
+        visitor.visit_none()
     }
 }
 
@@ -432,5 +446,22 @@ impl<'de, 'a> de::MapAccess<'de> for MapAccess<'a, 'de> {
         V: de::DeserializeSeed<'de>
     {
         seed.deserialize(&mut *self.de)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_derive::Deserialize;
+
+    #[test]
+    fn deserialize_primitive_values() {
+        #[derive(Deserialize, Debug)]
+        struct Test<T>(T);
+
+
+        let t: Test<i8> = from_bytes(&[200, 10]).unwrap();
+
+        println!("{:?}", t);
     }
 }
