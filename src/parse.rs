@@ -2,6 +2,21 @@ use super::error::{Error, ErrorCode, Result};
 use super::marker::Marker;
 use super::marker_bytes::*;
 
+macro_rules! bytes_to_usize {
+    ($b8:expr) => {
+        $b8 as usize
+    };
+    ($b7:expr, $b8:expr) => {
+        ($b7 as usize) << 8 | $b8 as usize
+    };
+    ($b5:expr, $b6:expr, $b7:expr, $b8:expr) => {
+        (($b5 as usize) << 24)
+            | (($b6 as usize) << 16)
+            | (($b7 as usize) << 8)
+            | $b8 as usize
+    };
+}
+
 type MarkerHint = (Marker, usize);
 
 #[derive(Debug)]
@@ -48,73 +63,78 @@ impl<'a> ByteReader<'a> {
         }
     }
 
-    pub fn peek_marker(&mut self) -> Result<Marker> {
-        let marker_byte = self.bytes[self.index];
+    fn get_byte(&self, ahead: usize) -> Result<&u8> {
+        self.bytes.get(self.index + ahead)
+            .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))
+    }
 
-        // Optimize usize by using arighmetic
+    pub fn peek_marker(&mut self) -> Result<Marker> {
+        let marker_byte = *self.get_byte(0)?;
+
         let marker = match marker_byte {
             // String
-            TINY_STRING..=TINY_STRING_MAX => Marker::String(usize::from(marker_byte - TINY_STRING)),
-            STRING_8 => Marker::String(usize::from(self.bytes[self.index + 1])),
+            TINY_STRING..=TINY_STRING_MAX => Marker::String((marker_byte - TINY_STRING) as usize),
+            STRING_8 => Marker::String(*self.get_byte(1)? as usize),
             STRING_16 => {
-                let b8 = self.bytes
-                    .get(self.index + 2)
-                    .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))?;
-                let b7 = self.bytes.get(self.index + 1).unwrap();
-                let len = *b7 as usize * 256 + *b8 as usize;
+                let b8 = *self.get_byte(2)?;
+                let b7 = self.bytes[self.index + 1];
 
-                Marker::String(len)
+                Marker::String(bytes_to_usize!(b7, b8))
             }
             STRING_32 => {
-                let b8 = self.bytes.get(self.index + 4)
-                    .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))?;
+                let b8 = *self.get_byte(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
-                Marker::String(usize::from_be_bytes([0, 0, 0, 0, b5, b6, b7, *b8]))
+
+                Marker::String(bytes_to_usize!(b5, b6, b7, b8))
             }
 
             // Map
-            TINY_MAP..=TINY_MAP_MAX => Marker::Map(usize::from(marker_byte - TINY_MAP)),
-            MAP_8 => Marker::Map(usize::from(self.bytes[self.index + 1])),
+            TINY_MAP..=TINY_MAP_MAX => Marker::Map((marker_byte - TINY_MAP) as usize),
+            MAP_8 => Marker::Map(*self.get_byte(1)? as usize),
             MAP_16 => {
-                let b8 = self.bytes.get(self.index + 2)
-                    .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))?;
+                let b8 = *self.get_byte(self.index + 2)?;
                 let b7 = self.bytes[self.index + 1];
-                Marker::Map(usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, *b8]))
+
+                Marker::Map(bytes_to_usize!(b7, b8))
             }
             MAP_32 => {
-                let b5 = self.bytes[self.index + 1];
-                let b6 = self.bytes[self.index + 2];
+                let b8 = *self.get_byte(4)?;
                 let b7 = self.bytes[self.index + 3];
-                let b8 = self.bytes[self.index + 4];
-                Marker::Map(usize::from_be_bytes([0, 0, 0, 0, b5, b6, b7, b8]))
+                let b6 = self.bytes[self.index + 2];
+                let b5 = self.bytes[self.index + 1];
+
+                Marker::Map(bytes_to_usize!(b5, b6, b7, b8))
             },
             MAP_STREAM => Marker::Map(std::usize::MAX),
             //
             // Struct
-            TINY_STRUCT..=TINY_STRUCT_MAX => Marker::Struct(usize::from(marker_byte - TINY_STRUCT)),
-            STRUCT_8 => Marker::Struct(usize::from(self.bytes[self.index + 1])),
+            TINY_STRUCT..=TINY_STRUCT_MAX => Marker::Struct((marker_byte - TINY_STRUCT) as usize),
+            STRUCT_8 => Marker::Struct(*self.get_byte(1)? as usize),
             STRUCT_16 => {
+                let b8 = *self.get_byte(2)?;
                 let b7 = self.bytes[self.index + 1];
-                let b8 = self.bytes[self.index + 2];
-                Marker::Struct(usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, b8]))
+
+                Marker::Struct(bytes_to_usize!(b7, b8))
             }
 
             // List
-            TINY_LIST..=TINY_LIST_MAX => Marker::List(usize::from(marker_byte - TINY_LIST)),
-            LIST_8 => Marker::List(usize::from(self.bytes[self.index + 1])),
+            TINY_LIST..=TINY_LIST_MAX => Marker::List((marker_byte - TINY_LIST) as usize),
+            LIST_8 => Marker::List(*self.get_byte(1)? as usize),
             LIST_16 => {
+                let b8 = *self.get_byte(2)?;
                 let b7 = self.bytes[self.index + 1];
-                let b8 = self.bytes[self.index + 2];
-                Marker::List(usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, b8]))
+
+                Marker::List(bytes_to_usize!(b7, b8))
             }
             LIST_32 => {
-                let b5 = self.bytes[self.index + 1];
-                let b6 = self.bytes[self.index + 2];
+                let b8 = *self.get_byte(4)?;
                 let b7 = self.bytes[self.index + 3];
-                let b8 = self.bytes[self.index + 4];
-                Marker::List(usize::from_be_bytes([0, 0, 0, 0, b5, b6, b7, b8]))
+                let b6 = self.bytes[self.index + 2];
+                let b5 = self.bytes[self.index + 1];
+
+                Marker::List(bytes_to_usize!(b5, b6, b7, b8))
             }
             LIST_STREAM => Marker::List(std::usize::MAX),
 
@@ -124,62 +144,66 @@ impl<'a> ByteReader<'a> {
 
             INT_8 => Marker::I64(i64::from(self.bytes[self.index + 1])),
             INT_16 => {
+                let b2 = *self.get_byte(2)?;
                 let b1 = self.bytes[self.index + 1];
-                let b2 = self.bytes[self.index + 2];
+
                 let n = i16::from_be_bytes([b1, b2]);
                 Marker::I64(i64::from(n))
             }
             INT_32 => {
-                let b1 = self.bytes[self.index + 1];
-                let b2 = self.bytes[self.index + 2];
+                let b4 = *self.get_byte(4)?;
                 let b3 = self.bytes[self.index + 3];
-                let b4 = self.bytes[self.index + 4];
+                let b2 = self.bytes[self.index + 2];
+                let b1 = self.bytes[self.index + 1];
+
                 let n = i32::from_be_bytes([b1, b2, b3, b4]);
                 Marker::I64(i64::from(n))
             }
             INT_64 => {
-                let b1 = self.bytes[self.index + 1];
-                let b2 = self.bytes[self.index + 2];
-                let b3 = self.bytes[self.index + 3];
-                let b4 = self.bytes[self.index + 4];
-                let b5 = self.bytes[self.index + 5];
-                let b6 = self.bytes[self.index + 6];
+                let b8 = *self.get_byte(8)?;
                 let b7 = self.bytes[self.index + 7];
-                let b8 = self.bytes[self.index + 8];
-                let n = i64::from_be_bytes([b1, b2, b3, b4, b5, b6, b7, b8]);
-                Marker::I64(n)
+                let b6 = self.bytes[self.index + 6];
+                let b5 = self.bytes[self.index + 5];
+                let b4 = self.bytes[self.index + 4];
+                let b3 = self.bytes[self.index + 3];
+                let b2 = self.bytes[self.index + 2];
+                let b1 = self.bytes[self.index + 1];
+
+                Marker::I64(i64::from_be_bytes([b1, b2, b3, b4, b5, b6, b7, b8]))
             }
             FLOAT_64 => {
-                let b1 = self.bytes[self.index + 1];
-                let b2 = self.bytes[self.index + 2];
-                let b3 = self.bytes[self.index + 3];
-                let b4 = self.bytes[self.index + 4];
-                let b5 = self.bytes[self.index + 5];
-                let b6 = self.bytes[self.index + 6];
+                let b8 = *self.get_byte(8)?;
                 let b7 = self.bytes[self.index + 7];
-                let b8 = self.bytes[self.index + 8];
+                let b6 = self.bytes[self.index + 6];
+                let b5 = self.bytes[self.index + 5];
+                let b4 = self.bytes[self.index + 4];
+                let b3 = self.bytes[self.index + 3];
+                let b2 = self.bytes[self.index + 2];
+                let b1 = self.bytes[self.index + 1];
+
                 let n = f64::from_bits(u64::from_be_bytes([b1, b2, b3, b4, b5, b6, b7, b8]));
                 Marker::F64(n)
             }
 
             END_OF_STREAM => Marker::EOS,
 
-            BYTES_8 => Marker::Bytes(usize::from(self.bytes[self.index + 1])),
+            BYTES_8 => Marker::Bytes(*self.get_byte(1)? as usize),
             BYTES_16 => {
+                let b8 = *self.get_byte(2)?;
                 let b7 = self.bytes[self.index + 1];
-                let b8 = self.bytes[self.index + 2];
-                let n = usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, b8]);
-                Marker::Bytes(n)
+
+                Marker::Bytes(bytes_to_usize!(b7, b8))
             }
             BYTES_32 => {
-                let b5 = self.bytes[self.index + 1];
-                let b6 = self.bytes[self.index + 2];
+                let b8 = *self.get_byte(4)?;
                 let b7 = self.bytes[self.index + 3];
-                let b8 = self.bytes[self.index + 4];
-                let n = usize::from_be_bytes([0, 0, 0, 0, b5, b6, b7, b8]);
-                Marker::Bytes(n)
+                let b6 = self.bytes[self.index + 2];
+                let b5 = self.bytes[self.index + 1];
+
+                Marker::Bytes(bytes_to_usize!(b5, b6, b7, b8))
             }
 
+            // TODO: JS's PackstreamV1 interprets unknown markers as Integers
             _ => return Err(Error::from_code(ErrorCode::ExpectedMarkerByte)),
         };
 
@@ -201,51 +225,45 @@ mod tests {
     use super::*;
 
     macro_rules! assert_try_peek {
-        ($bytes:expr, $marker:expr) => {
-            assert_eq!($marker, ByteReader { bytes: $bytes, index: 0, peeked: None }.peek_marker().unwrap());
-        }
+        ($($bytes:expr => $marker:expr),* $(,)*) => {
+            $(assert_eq!($marker, ByteReader { bytes: &$bytes, index: 0, peeked: None }.peek_marker().unwrap());)*
+        };
     }
 
     #[test]
     fn test_peek_marker() {
-        assert_try_peek!(&[TINY_MAP], Marker::Map(0));
-        assert_try_peek!(&[TINY_MAP + 10], Marker::Map(10));
-        assert_try_peek!(&[MAP_8, 20], Marker::Map(20));
-        assert_try_peek!(&[MAP_16, 1, 0], Marker::Map(256));
-        assert_try_peek!(&[MAP_32, 0, 1, 0, 0], Marker::Map(256 * 256));
-        assert_try_peek!(&[MAP_STREAM], Marker::Map(std::usize::MAX));
-
-        assert_try_peek!(&[TINY_STRING], Marker::String(0));
-        assert_try_peek!(&[TINY_STRING + 10], Marker::String(10));
-        assert_try_peek!(&[STRING_8, 20], Marker::String(20));
-        assert_try_peek!(&[STRING_16, 1, 0], Marker::String(256));
-        assert_try_peek!(&[STRING_32, 0, 1, 0, 0], Marker::String(256 * 256));
-
-        assert_try_peek!(&[TINY_STRUCT], Marker::Struct(0));
-        assert_try_peek!(&[STRUCT_8, 20], Marker::Struct(20));
-        assert_try_peek!(&[STRUCT_16, 1, 0], Marker::Struct(256));
-
-        assert_try_peek!(&[TINY_LIST + 5], Marker::List(5));
-        assert_try_peek!(&[LIST_8, 100], Marker::List(100));
-        assert_try_peek!(&[LIST_16, 1, 0], Marker::List(256));
-        assert_try_peek!(&[LIST_32, 0, 1, 0, 0], Marker::List(256 * 256));
-        assert_try_peek!(&[LIST_STREAM], Marker::List(std::usize::MAX));
-
-        assert_try_peek!(&[BYTES_8, 1], Marker::Bytes(1));
-        assert_try_peek!(&[BYTES_16, 1, 0], Marker::Bytes(256));
-        assert_try_peek!(&[BYTES_32, 0, 1, 0, 0], Marker::Bytes(256 * 256));
-
-        assert_try_peek!(&[NULL], Marker::Null);
-        assert_try_peek!(&[TRUE], Marker::True);
-        assert_try_peek!(&[FALSE], Marker::False);
-
-        assert_try_peek!(&[END_OF_STREAM], Marker::EOS);
-
-        assert_try_peek!(&[INT_8, 10], Marker::I64(10));
-        assert_try_peek!(&[INT_16, 1, 0], Marker::I64(256));
-        assert_try_peek!(&[INT_32, 0, 1, 0, 0], Marker::I64(256 * 256));
-        assert_try_peek!(&[INT_64, 0, 0, 1, 0, 0, 0, 0, 0], Marker::I64(256 * 256 * 256 * 256 * 256));
-
-        assert_try_peek!(&[FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0], Marker::F64(0.0));
+        assert_try_peek! {
+            [TINY_MAP] => Marker::Map(0),
+            [TINY_MAP + 10] => Marker::Map(10),
+            [MAP_8, 20] => Marker::Map(20),
+            [MAP_16, 1, 0] => Marker::Map(256),
+            [MAP_32, 0, 1, 0, 0] => Marker::Map(256 * 256),
+            [MAP_STREAM] => Marker::Map(std::usize::MAX),
+            [TINY_STRING] => Marker::String(0),
+            [TINY_STRING + 10] => Marker::String(10),
+            [STRING_8, 20] => Marker::String(20),
+            [STRING_16, 1, 0] => Marker::String(256),
+            [STRING_32, 0, 1, 0, 0] => Marker::String(256 * 256),
+            [TINY_STRUCT] => Marker::Struct(0),
+            [STRUCT_8, 20] => Marker::Struct(20),
+            [STRUCT_16, 1, 0] => Marker::Struct(256),
+            [TINY_LIST + 5] => Marker::List(5),
+            [LIST_8, 100] => Marker::List(100),
+            [LIST_16, 1, 0] => Marker::List(256),
+            [LIST_32, 0, 1, 0, 0] => Marker::List(256 * 256),
+            [LIST_STREAM] => Marker::List(std::usize::MAX),
+            [BYTES_8, 1] => Marker::Bytes(1),
+            [BYTES_16, 1, 0] => Marker::Bytes(256),
+            [BYTES_32, 0, 1, 0, 0] => Marker::Bytes(256 * 256),
+            [NULL] => Marker::Null,
+            [TRUE] => Marker::True,
+            [FALSE] => Marker::False,
+            [END_OF_STREAM] => Marker::EOS,
+            [INT_8, 10] => Marker::I64(10),
+            [INT_16, 1, 0] => Marker::I64(256),
+            [INT_32, 0, 1, 0, 0] => Marker::I64(256 * 256),
+            [INT_64, 0, 0, 1, 0, 0, 0, 0, 0] => Marker::I64(256 * 256 * 256 * 256 * 256),
+            [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0] => Marker::F64(0.0),
+        };
     }
 }

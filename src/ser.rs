@@ -449,6 +449,16 @@ mod tests {
         }
     }
 
+    macro_rules! map_literal {
+        ($($key:literal => $value:expr),* $(,)*) => {
+            {
+                let mut map = std::collections::HashMap::new();
+                $(map.insert($key, $value);)*
+                map
+            }
+        }
+    }
+
     use super::*;
     use serde_derive::Serialize;
     use serde_bytes::Bytes;
@@ -462,6 +472,14 @@ mod tests {
 
     #[derive(Serialize)]
     struct List<T: Serialize>(Vec<T>);
+
+    #[derive(Serialize)]
+    enum TEnum<T: Serialize> {
+        Int(i64),
+        Float(f64),
+        String(String),
+        List(List<T>)
+    }
 
     #[test]
     fn serialize_primitive_newtype() {
@@ -505,9 +523,25 @@ mod tests {
         };
     }
 
-    // fn test_enum () {}
+    #[test]
+    fn serialize_enum () {
+        assert_bytes! {
+            TEnum::<i64>::Int(0) => [INT_8, 0],
+            TEnum::<f64>::Float(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
+            TEnum::<String>::String(String::from("0".repeat(10))) => marked_vec!([TINY_STRING + 10], [48; 10]),
+            TEnum::<i64>::List(List(vec![10])) => [TINY_LIST + 1, INT_8, 10],
+        }
+    }
 
-    // fn test_map () {}
+    #[test]
+    fn serialize_map () {
+        assert_bytes! {
+            map_literal! { "auth" => String::from("user:password") } =>
+                marked_vec!([TINY_MAP + 1], vec![vec![TINY_STRING + 4], b"auth".to_vec(), vec![TINY_STRING + 13], b"user:password".to_vec()]),
+            map_literal! { "key" => 1000 } =>
+                marked_vec!([TINY_MAP + 1], vec![vec![TINY_STRING + 3], b"key".to_vec(), vec![INT_16, 3, 232]]),
+        };
+    }
 
     #[test]
     fn serialize_bytes() {
