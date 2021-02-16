@@ -130,50 +130,53 @@ impl fmt::Display for Marker {
 mod tests {
     use super::*;
 
-    // TODO: Errors
-    macro_rules! assert_marker {
-        ($marker:expr, [$($e:expr),*]) => {
-            assert_eq!($marker.to_vec().unwrap(), [$($e),*])
+    macro_rules! assert_marker_to_vec {
+        ($($marker:expr => $expected:expr),* $(,)*) => {
+            $(assert_eq!($marker.to_vec().unwrap(), $expected);)*
         };
     }
 
     #[test]
     fn test_marker_to_vec() {
-        assert_marker!(Marker::I64(127), [INT_8, 127]);
-        assert_marker!(Marker::I64(-128), [INT_8, 128]);
-        assert_marker!(Marker::I64(200), [INT_16, 0, 200]);
-        assert_marker!(Marker::I64(-200), [INT_16, 255, 56]);
-        assert_marker!(Marker::I64(-129), [INT_16, 255, 127]);
-        assert_marker!(Marker::I64(100000), [INT_32, 0, 1, 134, 160]);
-        assert_marker!(Marker::I64(-100000), [INT_32, 255, 254, 121, 96]);
-        assert_marker!(Marker::I64(3000000000), [INT_64, 0, 0, 0, 0, 178, 208, 94, 0]);
-        assert_marker!(Marker::I64(-3000000000), [INT_64, 255, 255, 255, 255, 77, 47, 162, 0]);
-        assert_marker!(Marker::F64(100f64), [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0]);
-        assert_marker!(Marker::String(10), [TINY_STRING + 10]);
-        assert_marker!(Marker::String(64), [STRING_8, 64]);
-        assert_marker!(Marker::String(256), [STRING_16, 1, 0]);
-        assert_marker!(Marker::String(256 * 256), [STRING_32, 0, 1, 0, 0]);
-        assert_marker!(Marker::String(256 * 256 * 256), [STRING_32, 1, 0, 0, 0]);
-        assert_marker!(Marker::List(10), [TINY_LIST + 10]);
-        assert_marker!(Marker::List(255), [LIST_8, 255]);
-        assert_marker!(Marker::List(256), [LIST_16, 1, 0]);
-        assert_marker!(Marker::List(256 * 256), [LIST_32, 0, 1, 0, 0]);
-        assert_marker!(Marker::List(256 * 256 * 256 * 256), [LIST_STREAM]);
-        assert_marker!(Marker::Bytes(10), [BYTES_8, 10]);
-        assert_marker!(Marker::Bytes(256), [BYTES_16, 1, 0]);
-        assert_marker!(Marker::Bytes(256 * 256), [BYTES_32, 0, 1, 0, 0]);
-        assert_marker!(Marker::Map(10), [TINY_MAP + 10]);
-        assert_marker!(Marker::Map(50), [MAP_8, 50]);
-        assert_marker!(Marker::Map(256), [MAP_16, 1, 0]);
-        assert_marker!(Marker::Map(256 * 256), [MAP_32, 0, 1, 0, 0]);
-        assert_marker!(Marker::Map(256 * 256 * 256 * 256), [MAP_STREAM]);
-        assert_marker!(Marker::Struct(10), [TINY_STRUCT + 10]);
-        assert_marker!(Marker::Struct(50), [STRUCT_8, 50]);
-        assert_marker!(Marker::Struct(256), [STRUCT_16, 1, 0]);
-        // assert_marker!(Marker::Struct(256 * 256 * 256));
-        assert_marker!(Marker::Null, [NULL]);
-        assert_marker!(Marker::True, [TRUE]);
-        assert_marker!(Marker::False, [FALSE]);
-        assert_marker!(Marker::EOS, [END_OF_STREAM]);
+        assert_marker_to_vec! {
+            Marker::I64(127) => [INT_8, 127],
+            Marker::I64(-128) => [INT_8, 128],
+            Marker::I64(200) => [INT_16, 0, 200],
+            Marker::I64(-200) => [INT_16, 255, 56],
+            Marker::I64(-129) => [INT_16, 255, 127],
+            Marker::I64(100000) => [INT_32, 0, 1, 134, 160],
+            Marker::I64(-100000) => [INT_32, 255, 254, 121, 96],
+            Marker::I64(3000000000) => [INT_64, 0, 0, 0, 0, 178, 208, 94, 0],
+            Marker::I64(-3000000000) => [INT_64, 255, 255, 255, 255, 77, 47, 162, 0],
+            Marker::F64(100f64) => [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0],
+            Marker::String(10) => [TINY_STRING + 10],
+            Marker::String(64) => [STRING_8, 64],
+            Marker::String(256) => [STRING_16, 1, 0],
+            Marker::String(256 * 256) => [STRING_32, 0, 1, 0, 0],
+            Marker::String(256 * 256 * 256) => [STRING_32, 1, 0, 0, 0],
+            Marker::List(10) => [TINY_LIST + 10],
+            Marker::List(255) => [LIST_8, 255],
+            Marker::List(256) => [LIST_16, 1, 0],
+            Marker::List(256 * 256) => [LIST_32, 0, 1, 0, 0],
+            Marker::List(256 * 256 * 256 * 256) => [LIST_STREAM],
+            Marker::Bytes(10) => [BYTES_8, 10],
+            Marker::Bytes(256) => [BYTES_16, 1, 0],
+            Marker::Bytes(256 * 256) => [BYTES_32, 0, 1, 0, 0],
+            Marker::Map(10) => [TINY_MAP + 10],
+            Marker::Map(50) => [MAP_8, 50],
+            Marker::Map(256) => [MAP_16, 1, 0],
+            Marker::Map(256 * 256) => [MAP_32, 0, 1, 0, 0],
+            Marker::Map(256 * 256 * 256 * 256) => [MAP_STREAM],
+            Marker::Struct(10) => [TINY_STRUCT + 10],
+            Marker::Struct(50) => [STRUCT_8, 50],
+            Marker::Struct(256) => [STRUCT_16, 1, 0],
+            Marker::Null => [NULL],
+            Marker::True => [TRUE],
+            Marker::False => [FALSE],
+            Marker::EOS => [END_OF_STREAM],
+        };
+            // Marker::Stru => (256 * 256 * 256),
+            // Marker::Stri => (256 * 256 * 256 * 256),
+            // Marker::Byt => (256 * 256 * 256 * 256),
     }
 }

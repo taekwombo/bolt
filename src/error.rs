@@ -68,6 +68,7 @@ pub(crate) enum ErrorCode {
     ExpectedBytesMarker,
     UnexpectedType,
     ExpectedListMarker,
+    UnexpectedEndOfBytes,
 }
 
 impl fmt::Display for ErrorCode {
@@ -85,6 +86,7 @@ impl fmt::Display for ErrorCode {
             Self::ExpectedBytesMarker => write!(f, "Expected Bytes Marker."),
             Self::UnexpectedType => write!(f, "Unexpected Type."),
             Self::ExpectedListMarker => write!(f, "Expected List Marker."),
+            Self::UnexpectedEndOfBytes => write!(f, "Unexpected end of bytes."),
         }
     }
 }

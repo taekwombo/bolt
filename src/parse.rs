@@ -51,32 +51,37 @@ impl<'a> ByteReader<'a> {
     pub fn peek_marker(&mut self) -> Result<Marker> {
         let marker_byte = self.bytes[self.index];
 
+        // Optimize usize by using arighmetic
         let marker = match marker_byte {
             // String
             TINY_STRING..=TINY_STRING_MAX => Marker::String(usize::from(marker_byte - TINY_STRING)),
             STRING_8 => Marker::String(usize::from(self.bytes[self.index + 1])),
             STRING_16 => {
-                let b7 = self.bytes[self.index + 1];
-                let b8 = self.bytes[self.index + 2];
-                let len = usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, b8]);
+                let b8 = self.bytes
+                    .get(self.index + 2)
+                    .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))?;
+                let b7 = self.bytes.get(self.index + 1).unwrap();
+                let len = *b7 as usize * 256 + *b8 as usize;
 
                 Marker::String(len)
             }
             STRING_32 => {
-                let b5 = self.bytes[self.index + 1];
-                let b6 = self.bytes[self.index + 2];
+                let b8 = self.bytes.get(self.index + 4)
+                    .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))?;
                 let b7 = self.bytes[self.index + 3];
-                let b8 = self.bytes[self.index + 4];
-                Marker::String(usize::from_be_bytes([0, 0, 0, 0, b5, b6, b7, b8]))
+                let b6 = self.bytes[self.index + 2];
+                let b5 = self.bytes[self.index + 1];
+                Marker::String(usize::from_be_bytes([0, 0, 0, 0, b5, b6, b7, *b8]))
             }
 
             // Map
             TINY_MAP..=TINY_MAP_MAX => Marker::Map(usize::from(marker_byte - TINY_MAP)),
             MAP_8 => Marker::Map(usize::from(self.bytes[self.index + 1])),
             MAP_16 => {
+                let b8 = self.bytes.get(self.index + 2)
+                    .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))?;
                 let b7 = self.bytes[self.index + 1];
-                let b8 = self.bytes[self.index + 2];
-                Marker::Map(usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, b8]))
+                Marker::Map(usize::from_be_bytes([0, 0, 0, 0, 0, 0, b7, *b8]))
             }
             MAP_32 => {
                 let b5 = self.bytes[self.index + 1];
@@ -244,110 +249,3 @@ mod tests {
         assert_try_peek!(&[FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0], Marker::F64(0.0));
     }
 }
-
-// peek_marker - returns marker, possibly with length information
-// it will also move byte index accordingly. Should it instead remove bytes
-// from index?
-
-// Returns Marker and amount of bytes or size of collection
-// fn get_marker_hint(byte: u8) -> MarkerHint {
-// }
-
-// fn read_header(bytes: &[u8]) -> MarkerHint {
-//     if bytes.len() == 0 {
-//         unimplemented!();
-//     }
-
-//     let (mut marker, size_bytes) = get_marker_hint(bytes[0]);
-//     let size_chunk = &bytes[1..];
-
-//     match marker {
-//         m @ Marker::Int(_) | m @ Marker::Float64(_) => (m, size_bytes)
-//         _ => unimplemented!()
-//     };
-
-//     println!("{:?} {:?}", marker, size_bytes);
-// }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn get_marker_hint_test () {
-//         for i in 0u8..15u8 {
-//             let len = usize::from(i);
-//             assert_eq!(get_marker_hint(TINY_STRING + i), (Marker::String(len), 0));
-//             assert_eq!(get_marker_hint(TINY_STRUCT + i), (Marker::Struct(len), 0));
-//             assert_eq!(get_marker_hint(TINY_LIST + i), (Marker::List(len), 0));
-//             assert_eq!(get_marker_hint(TINY_MAP + i), (Marker::Map(len), 0));
-//         }
-//     }
-
-//     #[test]
-//     fn read_header_test() {
-//         read_header(&[INT_8, 121]);
-//     }
-// }
-
-// Where deserializer will parse input, a method is needed that will produce Marker type
-// basing on the value of u8 and also return information on how many bytes should be consumed
-// in order to read the length of the element if any.
-// Size: 0-4 bytes
-
-// enum used to hint parser if any more bytes should be read in order to
-// infer all necessary information
-// enum ReadHint {
-//     EndOfStream, // Read until end of stream marker
-//     Bits(u8), // Read next N bits
-//     None, // Do not read any additional bits
-// }
-
-// There should be a reader function that would accept &mut Deserializer and would try to return Marker
-// from_bytes should return number of bytes that should be consumed
-// fn from_bytes (bytes: &[u8]) -> () {
-//     let (marker, consume_hint) = match bytes[0] {
-//         TINY_STRING..=TINY_STRING_MAX => (Marker::String(usize::from(bytes[0])), None),
-//         TINY_MAP..=TINY_MAP_MAX => (Marker::Map(usize::from(bytes[0])), None),
-//         TINY_LIST..=TINY_LIST_MAX => (Marker::List(usize::from(bytes[0])), None),
-//         TINY_STRUCT..=TINY_STRUCT_MAX => (Marker::Struct(usize::from(bytes[0])), None),
-//         NULL => (Marker::Null, None),
-//         FLOAT_64 => (Marker::Float64(0.0), Some(8)),
-//         TRUE => (Marker::True, None),
-//         FALSE => (Marker::False, None),
-//         INT_8 => (Marker::Int(0), Some(1)),
-//         INT_16 => (Marker::Int(0), Some(2)),
-//         INT_32 => (Marker::Int(0), Some(4)),
-//         INT_64 => (Marker::Int(0), Some(8)),
-//         BYTES_8 => (Marker::Bytes(0), Some(1)),
-//         BYTES_16 => (Marker::Bytes(0), Some(2)),
-//         BYTES_32 => (Marker::Bytes(0), Some(4)),
-//         STRING_8 => (Marker::String(0), Some(1)),
-//         STRING_16 => (Marker::String(0), Some(2)),
-//         STRING_32 => (Marker::String(0), Some(4)),
-//         MAP_8 => (Marker::Map(0), Some(1)),
-//         MAP_16 => (Marker::Map(0), Some(2)),
-//         MAP_32 => (Marker::Map(0), Some(4)),
-//         MAP_STREAM => (Marker::Map(0), None), // Is it the proper way to handle streams?
-//         LIST_8 => (Marker::List(0), Some(1)),
-//         LIST_16 => (Marker::List(0), Some(2)),
-//         LIST_32 => (Marker::List(0), Some(4)),
-//         LIST_STREAM => (Marker::List(0), None), // What to do? What to do?
-//         STRUCT_8 => (Marker::Struct(0), Some(1)),
-//         STRUCT_16 => (Marker::Struct(0), Some(2)),
-//         _ => unimplemented!(),
-//     };
-
-//     // if let Some(no_of_bytes) = consume_hint {
-//     //     let bytes = &bytes[1..1+no_of_bytes];
-//     //     match &mut marker {
-//     //         Marker::Int(value) => {
-//     //             *value = i64::from_be_bytes(bytes);
-//     //         }
-//     //         Marker::Map(l) | Marker::List(l) | Marker::Struct(l) | Marker::Bytes(l) | Marker::String(l) => {
-//     //             *l = usize::from_be_bytes(bytes);
-//     //         }
-//     //         _ => unimplemented!()
-//     //     };
-//     // }
-// }
