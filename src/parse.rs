@@ -142,7 +142,7 @@ impl<'a> ByteReader<'a> {
             TRUE => Marker::True,
             FALSE => Marker::False,
 
-            INT_8 => Marker::I64(i64::from(self.bytes[self.index + 1])),
+            INT_8 => Marker::I64(i64::from(i8::from_be_bytes([*self.get_byte(1)?]))),
             INT_16 => {
                 let b2 = *self.get_byte(2)?;
                 let b1 = self.bytes[self.index + 1];
@@ -260,9 +260,13 @@ mod tests {
             [FALSE] => Marker::False,
             [END_OF_STREAM] => Marker::EOS,
             [INT_8, 10] => Marker::I64(10),
+            [INT_8, 255] => Marker::I64(-1),
             [INT_16, 1, 0] => Marker::I64(256),
+            [INT_16, 255, 255] => Marker::I64(-1),
             [INT_32, 0, 1, 0, 0] => Marker::I64(256 * 256),
+            [INT_32, 255, 255, 255, 255] => Marker::I64(-1),
             [INT_64, 0, 0, 1, 0, 0, 0, 0, 0] => Marker::I64(256 * 256 * 256 * 256 * 256),
+            [INT_64, 255, 255, 255, 255, 255, 255, 255, 255] => Marker::I64(-1),
             [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0] => Marker::F64(0.0),
         };
     }
