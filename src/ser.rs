@@ -1,7 +1,6 @@
 use std::convert::TryFrom;
 use serde::{ser, Serialize};
 use super::marker::Marker;
-use super::marker_bytes::STRUCTURE_NAME;
 use super::error::{Error, ErrorCode, Result};
 
 #[derive(Clone, Debug)]
@@ -165,11 +164,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct> {
         // TODO: How to serialize? List? Map with {{name}} key -> List value?
         // For simplicity serialize as list
-        if name == STRUCTURE_NAME {
-            self.output.append(&mut Marker::Struct(len).to_vec()?);
-        } else {
-            self.output.append(&mut Marker::List(len).to_vec()?);
-        }
+        self.output.append(&mut Marker::List(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
 
@@ -465,16 +460,16 @@ mod tests {
     use super::super::marker_bytes::*;
 
     #[derive(Serialize)]
-    struct NewType<T: Serialize>(T);
+    struct NewType<T>(T);
 
     #[derive(Serialize)]
-    struct TupleStruct<T: Serialize, Y: Serialize>(T, Y);
+    struct TupleStruct<T, Y>(T, Y);
 
     #[derive(Serialize)]
-    struct List<T: Serialize>(Vec<T>);
+    struct List<T>(Vec<T>);
 
     #[derive(Serialize)]
-    enum TestEnum<T: Serialize> {
+    enum TestEnum<T> {
         Int(i64),
         Float(f64),
         String(String),
@@ -485,6 +480,7 @@ mod tests {
     fn serialize_primitive_newtype() {
         assert_bytes! {
             NewType(127) => [127],
+            NewType(-16) => [240],
             NewType(-128) => [INT_8, 128],
             NewType(200) => [INT_16, 0, 200],
             NewType(-200) => [INT_16, 255, 56],
