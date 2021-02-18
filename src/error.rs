@@ -70,6 +70,8 @@ pub(crate) enum ErrorCode {
     UnexpectedType,
     ExpectedListMarker,
     UnexpectedEndOfBytes,
+    UnexpectedEmptyPeekedMarker,
+    UnexpectedTrailingBytes,
 }
 
 impl fmt::Display for ErrorCode {
@@ -89,6 +91,8 @@ impl fmt::Display for ErrorCode {
             Self::UnexpectedType => write!(f, "Unexpected Type."),
             Self::ExpectedListMarker => write!(f, "Expected List Marker."),
             Self::UnexpectedEndOfBytes => write!(f, "Unexpected end of bytes."),
+            Self::UnexpectedEmptyPeekedMarker => write!(f, "Unexpected None instead of peeked marker."),
+            Self::UnexpectedTrailingBytes => write!(f, "Unexpected trailing bytes left."),
         }
     }
 }
@@ -102,5 +106,17 @@ impl From<String> for ErrorCode {
 impl From<&str> for ErrorCode {
     fn from(s: &str) -> Self {
         Self::Message(s.to_owned().into_boxed_str())
+    }
+}
+
+// TODO: Rethink
+impl From<std::str::Utf8Error> for Error {
+    fn from(m: std::str::Utf8Error) -> Self {
+        Self::make(m.to_string())
+    }
+}
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(m: std::string::FromUtf8Error) -> Self {
+        Self::make(m.to_string())
     }
 }

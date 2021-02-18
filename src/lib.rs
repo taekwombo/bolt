@@ -4,7 +4,7 @@
 mod marker_bytes;
 mod marker;
 mod error;
-mod parse;
 mod value;
+mod read;
 mod ser;
 mod de;
