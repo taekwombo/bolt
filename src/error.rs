@@ -60,6 +60,7 @@ pub(crate) enum ErrorCode {
     ExpectedMarkerByte,     // IMPLEMENTATION ERROR. Not a byte that is a marker
     ExpectedSizeMarker,     // IMPLEMENTATION ERROR. Marker that stores size
     MarkerSizeOutOfRange,   // IMPLEMENTATION ERROR. Size overflowed?
+    U64OutOfRangeForI64,
     ExpectedString1Marker,
     ExpectedStringMarker,
     ExpectedIntMarker,
@@ -78,6 +79,7 @@ impl fmt::Display for ErrorCode {
             Self::ExpectedSizeMarker => write!(f, "Expected size."),
             Self::ExpectedMarkerByte => write!(f, "Attempt to convert arbitrary u8 into Marker."),
             Self::MarkerSizeOutOfRange => write!(f, "Attempt to create Marker with size higher than maximum allowed value."),
+            Self::U64OutOfRangeForI64 => write!(f, "Attempt to convert u64 to i64"),
             Self::ExpectedString1Marker => write!(f, "Expected String(1) Marker."),
             Self::ExpectedStringMarker => write!(f, "Expected String Marker."),
             Self::ExpectedIntMarker => write!(f, "Expected String Marker."),

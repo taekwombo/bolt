@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use serde::{ser, Serialize};
 use super::marker::Marker;
 use super::marker_bytes::STRUCTURE_NAME;
-use super::error::{Error, Result};
+use super::error::{Error, ErrorCode, Result};
 
 #[derive(Clone, Debug)]
 pub struct Serializer {
@@ -77,7 +77,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_u64(self, value: u64) -> Result<Self::Ok> {
-        let val_int = i64::try_from(value).unwrap();
+        let val_int = i64::try_from(value).map_err(|_| Error::from_code(ErrorCode::U64OutOfRangeForI64))?;
         self.output.append(&mut Marker::I64(val_int).to_vec()?);
         Ok(())
     }
@@ -474,7 +474,7 @@ mod tests {
     struct List<T: Serialize>(Vec<T>);
 
     #[derive(Serialize)]
-    enum TEnum<T: Serialize> {
+    enum TestEnum<T: Serialize> {
         Int(i64),
         Float(f64),
         String(String),
@@ -484,7 +484,7 @@ mod tests {
     #[test]
     fn serialize_primitive_newtype() {
         assert_bytes! {
-            NewType(127) => [INT_8, 127],
+            NewType(127) => [127],
             NewType(-128) => [INT_8, 128],
             NewType(200) => [INT_16, 0, 200],
             NewType(-200) => [INT_16, 255, 56],
@@ -518,7 +518,7 @@ mod tests {
     #[test]
     fn serialize_list () {
         assert_bytes! {
-            List(vec![1; 4]) => marked_vec!([TINY_LIST + 4], vec![vec![INT_8, 1]; 4]),
+            List(vec![1; 4]) => marked_vec!([TINY_LIST + 4], vec![vec![1]; 4]),
             List(vec![NewType(String::from("1".repeat(12)))]) => marked_vec!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
         };
     }
@@ -526,10 +526,10 @@ mod tests {
     #[test]
     fn serialize_enum () {
         assert_bytes! {
-            TEnum::<i64>::Int(0) => [INT_8, 0],
-            TEnum::<f64>::Float(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
-            TEnum::<String>::String(String::from("0".repeat(10))) => marked_vec!([TINY_STRING + 10], [48; 10]),
-            TEnum::<i64>::List(List(vec![10])) => [TINY_LIST + 1, INT_8, 10],
+            TestEnum::<i64>::Int(0) => [0],
+            TestEnum::<f64>::Float(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
+            TestEnum::<String>::String(String::from("0".repeat(10))) => marked_vec!([TINY_STRING + 10], [48; 10]),
+            TestEnum::<i64>::List(List(vec![10])) => [TINY_LIST + 1, 10],
         }
     }
 

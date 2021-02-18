@@ -203,6 +203,10 @@ impl<'a> ByteReader<'a> {
                 Marker::Bytes(bytes_to_usize!(b5, b6, b7, b8))
             }
 
+            0..=0x7F | 0xF0..=0xFF => {
+                Marker::I64(i8::from_be_bytes([marker_byte]).into())
+            }
+
             // TODO: JS's PackstreamV1 interprets unknown markers as Integers
             _ => return Err(Error::from_code(ErrorCode::ExpectedMarkerByte)),
         };

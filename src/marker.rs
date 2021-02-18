@@ -67,7 +67,8 @@ impl Marker {
                 _ => return Err(Error::make("String too long to pack.")),
             },
             Self::I64(int) => match int {
-                -0x80..=0x7F => to_bytes!(INT_8, i8, *int),
+                -0x10..=0x7F => i8::try_from(*int).unwrap().to_be_bytes().to_vec(),
+                -0x80..=-0x11 => to_bytes!(INT_8, i8, *int),
                 -0x8000..=-0x81 | 0x80..=0x7FFF => to_bytes!(INT_16, i16, *int),
                 -0x80000000..=-0x8001 | 0x8000..=0x7FFFFFFF => to_bytes!(INT_32, i32, *int),
                 _ => to_bytes!(INT_64, int),
@@ -136,10 +137,18 @@ mod tests {
         };
     }
 
+    // TODO: Merge into assert_marker_to_vec
+    macro_rules! assert_marker_to_vec_err {
+        ($($marker:expr),* $(,)*) => {
+            $(assert!($marker.to_vec().is_err());)*
+        };
+    }
+
     #[test]
     fn test_marker_to_vec() {
         assert_marker_to_vec! {
-            Marker::I64(127) => [INT_8, 127],
+            Marker::I64(127) => [127],
+            Marker::I64(-16) => [240],
             Marker::I64(-128) => [INT_8, 128],
             Marker::I64(200) => [INT_16, 0, 200],
             Marker::I64(-200) => [INT_16, 255, 56],
@@ -175,8 +184,11 @@ mod tests {
             Marker::False => [FALSE],
             Marker::EOS => [END_OF_STREAM],
         };
-            // Marker::Stru => (256 * 256 * 256),
-            // Marker::Stri => (256 * 256 * 256 * 256),
-            // Marker::Byt => (256 * 256 * 256 * 256),
+
+        assert_marker_to_vec_err! {
+            Marker::Struct(256 * 256 * 256),
+            Marker::String(256 * 256 * 256 * 256),
+            Marker::Bytes(256 * 256 * 256 * 256)
+        };
     }
 }
