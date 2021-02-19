@@ -162,6 +162,16 @@ impl<'de> Deserializer<'de> {
         }
     }
 
+    fn parse_enum(&mut self) -> Result<()> {
+        match self.read.peek_marker()? {
+            Marker::Map(len) if len == 1 => {
+                self.read.scratch_peeked();
+                Ok(())
+            }
+            _ => Err(Error::from_code(ErrorCode::ExpectedListMarker))
+        }
+    }
+
     fn try_end_stream(&mut self) -> bool {
         let marker = self.read.peek_marker();
         if marker.is_ok() {
@@ -397,6 +407,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>
     {
+        self.parse_enum()?;
         visitor.visit_enum(VariantAccess { de: self })
     }
 
@@ -422,7 +433,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 struct SeqAccess<'a, 'de: 'a> {
     de: &'a mut Deserializer<'de>,
     len: usize,
-    // TODO: Handle streams
 }
 
 impl<'a, 'de> SeqAccess<'a, 'de> {
@@ -530,9 +540,19 @@ mod tests {
     use serde_derive::Deserialize;
     use serde_bytes::{Bytes, ByteBuf};
 
+    macro_rules! bytes {
+        ($($slice:expr),* $(,)*) => {
+            {
+                let mut arr = Vec::new();
+                $(arr.extend_from_slice(&$slice);)*
+                arr
+            }
+        }
+    }
+
     macro_rules! assert_deserialize {
         ($($t:ty => $arr:expr),* $(,)*) => {
-            $(assert!(from_bytes::<$t>(&$arr).is_ok());)*
+            $(assert!(from_bytes::<$t>(&$arr).map_err(|e| eprintln!("{}", e)).is_ok());)*
         }
     }
 
@@ -546,11 +566,11 @@ mod tests {
     struct List<T>(Vec<T>);
 
     #[derive(Deserialize)]
-    enum TestEnum<T> {
-        Int(i64),
-        Float(f64),
-        String(String),
-        List(List<T>)
+    enum TestEnum {
+        UnitVariant,
+        NewTypeVariant(u8),
+        TupleVariant(u8, u8),
+        StructVarint { one: u8 }
     }
 
     #[test]
@@ -618,6 +638,34 @@ mod tests {
 
     #[test]
     fn deserialize_enum() {
-        // TODO
+        assert_deserialize! {
+            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 11], b"UnitVariant".to_vec(), [NULL]),
+            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 14], b"NewTypeVariant".to_vec(), [127]),
+            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 12], b"TupleVariant".to_vec(), [TINY_LIST + 2, 100, 100]),
+            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 12], b"StructVarint".to_vec(), [TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [100]),
+        }
+    }
+
+    #[test]
+    fn deserialize_map() {
+        use std::collections::HashMap;
+
+        #[derive(Deserialize)]
+        struct TestStruct {
+            one: u8,
+        }
+
+        assert_deserialize! {
+            TestStruct => bytes!([TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [100]),
+            HashMap<&str, u8> => bytes!([TINY_MAP + 2, TINY_STRING + 2], b"01".to_vec(), [100], [TINY_STRING + 3], b"123".to_vec(), [100]),
+        }
+    }
+
+    #[test]
+    fn deserialize_bytes() {
+        assert_deserialize! {
+            NewType<&Bytes> => bytes!([BYTES_8, 5, 10, 20, 30, 40, 50]),
+            NewType<ByteBuf> => bytes!([BYTES_16, 1, 0], [0; 256]),
+        }
     }
 }

@@ -422,46 +422,26 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
 
 #[cfg(test)]
 mod tests {
-    macro_rules! marked_vec {
-        ([$($elems:expr),*], [$elem:literal; $len:literal]) => {
-            {
-                let mut arr = vec![$($elems),*];
-                for i in 0..$len {
-                    arr.push($elem);
-                }
-                arr
-            }
-        };
-
-        ([$($elems:expr),*], $($vec:expr),*) => {
-            {
-                let mut arr = vec![$($elems),*];
-                $(arr.append(&mut $vec.into_iter().flatten().collect());)*
-                arr
-            }
-        };
-    }
-
-    macro_rules! assert_bytes {
-        ($($to_ser:expr => $expected:expr),* $(,)*) => {
-            $(assert_eq!(to_bytes(&$to_ser).unwrap(), $expected);)*
-        }
-    }
-
-    macro_rules! map_literal {
-        ($($key:literal => $value:expr),* $(,)*) => {
-            {
-                let mut map = std::collections::HashMap::new();
-                $(map.insert($key, $value);)*
-                map
-            }
-        }
-    }
-
     use super::*;
     use serde_derive::Serialize;
     use serde_bytes::Bytes;
     use super::super::marker_bytes::*;
+
+    macro_rules! bytes {
+        ($($slice:expr),* $(,)*) => {
+            {
+                let mut arr = vec![];
+                $(arr.extend_from_slice(&$slice);)*
+                arr
+            }
+        }
+    }
+
+    macro_rules! assert_bytes {
+        ($($to_ser:expr => $expected:expr),* $(,)*) => {
+            $(assert_eq!(to_bytes(&$to_ser).map_err(|e| eprintln!("{}", e)).unwrap(), $expected);)*
+        }
+    }
 
     #[derive(Serialize)]
     struct NewType<T>(T);
@@ -498,7 +478,7 @@ mod tests {
             NewType("11111") => [TINY_STRING + 5, 49, 49, 49, 49, 49],
             NewType('1') => [TINY_STRING + 1, 49],
             NewType(String::from("11111")) => [TINY_STRING + 5, 49, 49, 49, 49, 49],
-            NewType("1".repeat(16)) => marked_vec!([STRING_8, 16], [49; 16]),
+            NewType("1".repeat(16)) => bytes!([STRING_8, 16], [49; 16]),
             NewType::<Option<u8>>(None) => [NULL],
             NewType(true) => [TRUE],
             NewType(false) => [FALSE],
@@ -518,38 +498,46 @@ mod tests {
     #[test]
     fn serialize_list () {
         assert_bytes! {
-            List(vec![1; 4]) => marked_vec!([TINY_LIST + 4], vec![vec![1]; 4]),
-            List(vec![NewType(String::from("1".repeat(12)))]) => marked_vec!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
+            List(vec![1; 4]) => bytes!([TINY_LIST + 4], [1; 4]),
+            List(vec![NewType(String::from("1".repeat(12)))]) => bytes!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
         };
     }
 
     #[test]
     fn serialize_enum () {
         assert_bytes! {
-            TestEnum::UnitVariant => marked_vec!([TINY_MAP + 1, TINY_STRING + 11], vec![b"UnitVariant".to_vec(), vec![NULL]]),
-            TestEnum::NewTypeVariant(0) => marked_vec!([TINY_MAP + 1, TINY_STRING + 14], vec![b"NewTypeVariant".to_vec(), vec![0]]),
-            TestEnum::TupleVariant(1, 2) => marked_vec!([TINY_MAP + 1, TINY_STRING + 12], vec![
-                b"TupleVariant".to_vec(), vec![TINY_LIST + 2, 1, 2]
-            ]),
-            TestEnum::StructVariant { one: 1 } => marked_vec!([TINY_MAP + 1, TINY_STRING + 13], vec![
-                b"StructVariant".to_vec(), vec![TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), vec![1]
-            ]),
+            TestEnum::UnitVariant => bytes!([TINY_MAP + 1, TINY_STRING + 11], b"UnitVariant".to_vec(), [NULL]),
+            TestEnum::NewTypeVariant(0) => bytes!([TINY_MAP + 1, TINY_STRING + 14], b"NewTypeVariant".to_vec(), [0]),
+            TestEnum::TupleVariant(1, 2) => bytes!([TINY_MAP + 1, TINY_STRING + 12], b"TupleVariant".to_vec(), [TINY_LIST + 2, 1, 2]),
+            TestEnum::StructVariant { one: 1 } => bytes!([TINY_MAP + 1, TINY_STRING + 13], b"StructVariant".to_vec(), [TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [1]),
         }
     }
 
     #[test]
     fn serialize_map () {
+        use std::collections::HashMap;
+
+        macro_rules! map {
+            ($($key:literal: $value:expr),* $(,)*) => {
+                {
+                    let mut map = HashMap::new();
+                    $(map.insert($key, $value);)*
+                    map
+                }
+            }
+        }
+
         #[derive(Serialize)]
         struct TestStruct {
             one: u8
         };
 
         assert_bytes! {
-            TestStruct { one: 127 } => marked_vec!([TINY_MAP + 1, TINY_STRING + 3], vec![b"one".to_vec(), vec![127]]),
-            map_literal! { "auth" => String::from("user:password") } =>
-                marked_vec!([TINY_MAP + 1], vec![vec![TINY_STRING + 4], b"auth".to_vec(), vec![TINY_STRING + 13], b"user:password".to_vec()]),
-            map_literal! { "key" => 1000 } =>
-                marked_vec!([TINY_MAP + 1], vec![vec![TINY_STRING + 3], b"key".to_vec(), vec![INT_16, 3, 232]]),
+            TestStruct { one: 127 } => bytes!([TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [127]),
+            map! { "auth": "user:password" } =>
+                bytes!([TINY_MAP + 1], [TINY_STRING + 4], b"auth".to_vec(), [TINY_STRING + 13], b"user:password".to_vec()),
+            map! { "key": 1000 } =>
+                bytes!([TINY_MAP + 1], [TINY_STRING + 3], b"key".to_vec(), [INT_16, 3, 232]),
         };
     }
 
@@ -557,7 +545,7 @@ mod tests {
     fn serialize_bytes() {
         assert_bytes! {
             NewType(Bytes::new(&[10, 20, 30, 40, 50])) => [BYTES_8, 5, 10, 20, 30, 40, 50],
-            NewType(Bytes::new(&[0; 256])) => marked_vec!([BYTES_16, 1, 0], [0; 256]),
+            NewType(Bytes::new(&[0; 256])) => bytes!([BYTES_16, 1, 0], [0; 256]),
         }
     }
 }
