@@ -127,6 +127,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_unit_variant(self, name: &'static str, variant_index: u32, variant: &'static str) -> Result<Self::Ok> {
+        self.output.append(&mut Marker::Map(1).to_vec()?);
+        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output.extend_from_slice(&variant.as_bytes());
         self.serialize_unit()
     }
 
@@ -141,7 +144,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     where
         T: ?Sized + Serialize
     {
-        // TODO: Is it the right way to serialize newtype_variant?
+        self.output.append(&mut Marker::Map(1).to_vec()?);
+        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output.extend_from_slice(&variant.as_bytes());
         value.serialize(self)
     }
 
@@ -155,21 +160,19 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
-        // TODO: List or structure?
-        // For simplicity serialize as list
         self.output.append(&mut Marker::List(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
 
     fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct> {
-        // TODO: How to serialize? List? Map with {{name}} key -> List value?
-        // For simplicity serialize as list
         self.output.append(&mut Marker::List(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
 
     fn serialize_tuple_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeTupleVariant> {
-        // TODO: How to serialize?
+        self.output.append(&mut Marker::Map(1).to_vec()?);
+        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output.extend_from_slice(&variant.as_bytes());
         self.output.append(&mut Marker::List(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
@@ -189,6 +192,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_struct_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeStructVariant> {
+        self.output.append(&mut Marker::Map(1).to_vec()?);
+        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output.extend_from_slice(&variant.as_bytes());
         self.output.append(&mut Marker::Map(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
@@ -438,9 +444,7 @@ mod tests {
 
     macro_rules! assert_bytes {
         ($($to_ser:expr => $expected:expr),* $(,)*) => {
-            $(
-                assert_eq!(to_bytes(&$to_ser).unwrap(), $expected);
-            )*
+            $(assert_eq!(to_bytes(&$to_ser).unwrap(), $expected);)*
         }
     }
 
@@ -469,11 +473,11 @@ mod tests {
     struct List<T>(Vec<T>);
 
     #[derive(Serialize)]
-    enum TestEnum<T> {
-        Int(i64),
-        Float(f64),
-        String(String),
-        List(List<T>)
+    enum TestEnum {
+        UnitVariant,
+        NewTypeVariant(i64),
+        TupleVariant(u8, u8),
+        StructVariant { one: u8 },
     }
 
     #[test]
@@ -522,16 +526,26 @@ mod tests {
     #[test]
     fn serialize_enum () {
         assert_bytes! {
-            TestEnum::<i64>::Int(0) => [0],
-            TestEnum::<f64>::Float(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
-            TestEnum::<String>::String(String::from("0".repeat(10))) => marked_vec!([TINY_STRING + 10], [48; 10]),
-            TestEnum::<i64>::List(List(vec![10])) => [TINY_LIST + 1, 10],
+            TestEnum::UnitVariant => marked_vec!([TINY_MAP + 1, TINY_STRING + 11], vec![b"UnitVariant".to_vec(), vec![NULL]]),
+            TestEnum::NewTypeVariant(0) => marked_vec!([TINY_MAP + 1, TINY_STRING + 14], vec![b"NewTypeVariant".to_vec(), vec![0]]),
+            TestEnum::TupleVariant(1, 2) => marked_vec!([TINY_MAP + 1, TINY_STRING + 12], vec![
+                b"TupleVariant".to_vec(), vec![TINY_LIST + 2, 1, 2]
+            ]),
+            TestEnum::StructVariant { one: 1 } => marked_vec!([TINY_MAP + 1, TINY_STRING + 13], vec![
+                b"StructVariant".to_vec(), vec![TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), vec![1]
+            ]),
         }
     }
 
     #[test]
     fn serialize_map () {
+        #[derive(Serialize)]
+        struct TestStruct {
+            one: u8
+        };
+
         assert_bytes! {
+            TestStruct { one: 127 } => marked_vec!([TINY_MAP + 1, TINY_STRING + 3], vec![b"one".to_vec(), vec![127]]),
             map_literal! { "auth" => String::from("user:password") } =>
                 marked_vec!([TINY_MAP + 1], vec![vec![TINY_STRING + 4], b"auth".to_vec(), vec![TINY_STRING + 13], b"user:password".to_vec()]),
             map_literal! { "key" => 1000 } =>
