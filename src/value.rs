@@ -42,11 +42,11 @@ impl Default for Value {
 pub struct Structure(Vec<Value>);
 
 impl Structure {
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Self(Vec::new())
     }
 
-    fn push<V: Into<Value>>(&mut self, value: V) {
+    pub fn push<V: Into<Value>>(&mut self, value: V) {
         self.0.push(value.into());
     }
 }
@@ -75,7 +75,7 @@ mod tests {
         assert_eq!(Value::default(), Value::Null);
         let mut s: Structure = Structure::empty();
         s.push(Value::I64(10));
-        println!("{:?}", from_bytes::<Structure>(&to_bytes(&s).unwrap()));
+        assert_eq!(s, from_bytes::<Structure>(&to_bytes(&s).unwrap()).unwrap());
     }
 
     #[test]

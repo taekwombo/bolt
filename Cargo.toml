@@ -1,5 +1,5 @@
 [package]
-name = "serde-bolt"
+name = "serde_bolt"
 version = "0.1.0"
 edition = "2018"
 

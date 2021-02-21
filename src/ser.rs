@@ -494,6 +494,35 @@ mod tests {
     }
 
     #[test]
+    fn serialize_integer() {
+        for i in -0x10..=0x7Fi8 {
+            assert_bytes!(NewType(i) => [i.to_be_bytes()[0]]);
+        }
+        for i in -0x80..-0x10i8 {
+            assert_bytes!(NewType(i) => [INT_8, i.to_be_bytes()[0]]);
+        }
+        for i in 0x80..=0x7FFFi16 {
+            let b = i.to_be_bytes();
+            assert_bytes!(NewType(i) => [INT_16, b[0], b[1]]);
+        }
+        for i in -0x8000..-0x80i16 {
+            let b = i.to_be_bytes();
+            assert_bytes!(NewType(i) => [INT_16, b[0], b[1]]);
+        }
+
+        assert_bytes! {
+            NewType(-0x8001) => bytes!([INT_32], (-0x8001i32).to_be_bytes()),
+            NewType(-0x8000_0000) => bytes!([INT_32], (-0x8000_0000i32).to_be_bytes()),
+            NewType(0x8000) => bytes!([INT_32], (0x8000i32).to_be_bytes()),
+            NewType(0x7FFF_FFFF) => bytes!([INT_32], (0x7FFF_FFFFi32).to_be_bytes()),
+            NewType(0x8000_0000i64) => bytes!([INT_64], (0x8000_0000i64).to_be_bytes()),
+            NewType(0x7F00_0000_0000_0000i64) => bytes!([INT_64], (0x7F00_0000_0000_0000i64).to_be_bytes()),
+            NewType(-0x8000_0001i64) => bytes!([INT_64], (-0x8000_0001i64).to_be_bytes()),
+            NewType(-0x8000_0000_0000_0000i64) => bytes!([INT_64], (-0x8000_0000_0000_0000i64).to_be_bytes()),
+        };
+    }
+
+    #[test]
     fn serialize_primitive_newtype() {
         assert_bytes! {
             NewType(127) => [127],
