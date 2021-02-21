@@ -1,24 +1,16 @@
-use std::convert::TryFrom;
-use serde::{ser, Serialize};
+use super::error::{Error, ErrorCode, Result};
 use super::marker::Marker;
 use super::marker_bytes::STRUCTURE_NAME;
-use super::error::{Error, ErrorCode, Result};
+use serde::{ser, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug)]
 pub struct Serializer {
     output: Vec<u8>,
 }
 
-impl Serializer {
-    pub(crate) fn write_bytes(&mut self, bytes: &[u8]) -> () {
-        self.output.extend_from_slice(bytes);
-    }
-}
-
 pub fn to_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    let mut serializer = Serializer {
-        output: Vec::new(),
-    };
+    let mut serializer = Serializer { output: Vec::new() };
     value.serialize(&mut serializer)?;
     Ok(serializer.output)
 }
@@ -42,17 +34,20 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_i8(self, value: i8) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::I64(i64::from(value)).to_vec()?);
+        self.output
+            .append(&mut Marker::I64(i64::from(value)).to_vec()?);
         Ok(())
     }
 
     fn serialize_i16(self, value: i16) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::I64(i64::from(value)).to_vec()?);
+        self.output
+            .append(&mut Marker::I64(i64::from(value)).to_vec()?);
         Ok(())
     }
 
     fn serialize_i32(self, value: i32) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::I64(i64::from(value)).to_vec()?);
+        self.output
+            .append(&mut Marker::I64(i64::from(value)).to_vec()?);
         Ok(())
     }
 
@@ -62,22 +57,26 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_u8(self, value: u8) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
+        self.output
+            .append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
         Ok(())
     }
 
     fn serialize_u16(self, value: u16) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
+        self.output
+            .append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
         Ok(())
     }
 
     fn serialize_u32(self, value: u32) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
+        self.output
+            .append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
         Ok(())
     }
 
     fn serialize_u64(self, value: u64) -> Result<Self::Ok> {
-        let val_int = i64::try_from(value).map_err(|_| Error::from_code(ErrorCode::U64OutOfRangeForI64))?;
+        let val_int =
+            i64::try_from(value).map_err(|_| Error::from_code(ErrorCode::U64OutOfRangeForI64))?;
         self.output.append(&mut Marker::I64(val_int).to_vec()?);
         Ok(())
     }
@@ -96,13 +95,15 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_str(self, value: &str) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::String(value.len()).to_vec()?);
+        self.output
+            .append(&mut Marker::String(value.len()).to_vec()?);
         self.output.extend_from_slice(&value.as_bytes());
         Ok(())
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Self::Ok> {
-        self.output.append(&mut Marker::Bytes(value.len()).to_vec()?);
+        self.output
+            .append(&mut Marker::Bytes(value.len()).to_vec()?);
         self.output.extend_from_slice(value);
         Ok(())
     }
@@ -114,7 +115,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         value.serialize(self)
     }
@@ -123,30 +124,43 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         self.serialize_none()
     }
 
-    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok> {
         self.serialize_unit()
     }
 
-    fn serialize_unit_variant(self, name: &'static str, variant_index: u32, variant: &'static str) -> Result<Self::Ok> {
+    fn serialize_unit_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+    ) -> Result<Self::Ok> {
         self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output
+            .append(&mut Marker::String(variant.len()).to_vec()?);
         self.output.extend_from_slice(&variant.as_bytes());
         self.serialize_unit()
     }
 
-    fn serialize_newtype_struct<T>(self, name: &'static str, value: &T) -> Result<Self::Ok>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<Self::Ok>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         value.serialize(self)
     }
 
-    fn serialize_newtype_variant<T> (self, name: &'static str, variant_index: u32, variant: &'static str, value: &T) -> Result<Self::Ok>
+    fn serialize_newtype_variant<T>(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+        value: &T,
+    ) -> Result<Self::Ok>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output
+            .append(&mut Marker::String(variant.len()).to_vec()?);
         self.output.extend_from_slice(&variant.as_bytes());
         value.serialize(self)
     }
@@ -165,8 +179,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(Compound::new_static(self))
     }
 
-    fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct> {
-        // Serialize Structure as tuple, using Structure marker.
+    fn serialize_tuple_struct(
+        self,
+        name: &'static str,
+        len: usize,
+    ) -> Result<Self::SerializeTupleStruct> {
         if name == STRUCTURE_NAME {
             self.output.append(&mut Marker::Struct(len).to_vec()?);
         } else {
@@ -175,9 +192,16 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(Compound::new_static(self))
     }
 
-    fn serialize_tuple_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeTupleVariant> {
+    fn serialize_tuple_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+        len: usize,
+    ) -> Result<Self::SerializeTupleVariant> {
         self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output
+            .append(&mut Marker::String(variant.len()).to_vec()?);
         self.output.extend_from_slice(&variant.as_bytes());
         self.output.append(&mut Marker::List(len).to_vec()?);
         Ok(Compound::new_static(self))
@@ -192,14 +216,21 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         }
     }
 
-    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         self.output.append(&mut Marker::Map(len).to_vec()?);
         Ok(Compound::new_static(self))
     }
 
-    fn serialize_struct_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeStructVariant> {
+    fn serialize_struct_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+        len: usize,
+    ) -> Result<Self::SerializeStructVariant> {
         self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output.append(&mut Marker::String(variant.len()).to_vec()?);
+        self.output
+            .append(&mut Marker::String(variant.len()).to_vec()?);
         self.output.extend_from_slice(&variant.as_bytes());
         self.output.append(&mut Marker::Map(len).to_vec()?);
         Ok(Compound::new_static(self))
@@ -217,21 +248,17 @@ pub enum Compound<'a> {
 }
 
 impl<'a> Compound<'a> {
-    fn new_dyn (ser: &'a mut Serializer, marker: Marker) -> Self {
+    fn new_dyn(ser: &'a mut Serializer, marker: Marker) -> Self {
         let mut buf = Vec::new();
         std::mem::swap(&mut buf, &mut ser.output);
-        Self::DynSized {
-            ser,
-            buf,
-            marker,
-        }
+        Self::DynSized { ser, buf, marker }
     }
 
     fn new_static(ser: &'a mut Serializer) -> Self {
         Self::StaticSized(ser)
     }
 
-    fn end_state (&mut self) {
+    fn end_state(&mut self) {
         if let Compound::DynSized { ser, buf, marker } = self {
             buf.append(&mut marker.to_vec().unwrap());
             buf.append(&mut ser.output);
@@ -246,7 +273,7 @@ impl<'a> ser::SerializeSeq for Compound<'a> {
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<Self::Ok>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::StaticSized(ser) => ser,
@@ -259,7 +286,7 @@ impl<'a> ser::SerializeSeq for Compound<'a> {
     }
 
     fn end(mut self) -> Result<Self::Ok> {
-        &mut self.end_state();
+        self.end_state();
         Ok(())
     }
 }
@@ -270,20 +297,20 @@ impl<'a> ser::SerializeTuple for Compound<'a> {
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<Self::Ok>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
                 marker.inc_size(1)?;
                 ser
-            },
+            }
             Compound::StaticSized(ser) => ser,
         };
         value.serialize(&mut **ser)
     }
 
     fn end(mut self) -> Result<Self::Ok> {
-        &mut self.end_state();
+        self.end_state();
         Ok(())
     }
 }
@@ -294,31 +321,7 @@ impl<'a> ser::SerializeTupleStruct for Compound<'a> {
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize
-    {
-        let ser = match self {
-            Compound::DynSized { ser, marker, .. } => {
-                marker.inc_size(1)?;
-                ser
-            }
-            Compound::StaticSized(ser) => ser
-        };
-        value.serialize(&mut **ser)
-    }
-
-    fn end(mut self) -> Result<Self::Ok> {
-        &mut self.end_state();
-        Ok(())
-    }
-}
-
-impl<'a> ser::SerializeTupleVariant for Compound<'a> {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
@@ -331,7 +334,31 @@ impl<'a> ser::SerializeTupleVariant for Compound<'a> {
     }
 
     fn end(mut self) -> Result<Self::Ok> {
-        &mut self.end_state();
+        self.end_state();
+        Ok(())
+    }
+}
+
+impl<'a> ser::SerializeTupleVariant for Compound<'a> {
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        let ser = match self {
+            Compound::DynSized { ser, marker, .. } => {
+                marker.inc_size(1)?;
+                ser
+            }
+            Compound::StaticSized(ser) => ser,
+        };
+        value.serialize(&mut **ser)
+    }
+
+    fn end(mut self) -> Result<Self::Ok> {
+        self.end_state();
         Ok(())
     }
 }
@@ -342,7 +369,7 @@ impl<'a> ser::SerializeMap for Compound<'a> {
 
     fn serialize_key<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
@@ -356,7 +383,7 @@ impl<'a> ser::SerializeMap for Compound<'a> {
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
@@ -369,7 +396,7 @@ impl<'a> ser::SerializeMap for Compound<'a> {
     }
 
     fn end(mut self) -> Result<Self::Ok> {
-        &mut self.end_state();
+        self.end_state();
         Ok(())
     }
 }
@@ -380,7 +407,7 @@ impl<'a> ser::SerializeStruct for Compound<'a> {
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
@@ -395,7 +422,7 @@ impl<'a> ser::SerializeStruct for Compound<'a> {
     }
 
     fn end(mut self) -> Result<Self::Ok> {
-        &mut self.end_state();
+        self.end_state();
         Ok(())
     }
 }
@@ -406,7 +433,7 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize
+        T: ?Sized + Serialize,
     {
         let ser = match self {
             Compound::DynSized { ser, marker, .. } => {
@@ -421,17 +448,17 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
     }
 
     fn end(mut self) -> Result<()> {
-        &mut self.end_state();
+        self.end_state();
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use serde_derive::Serialize;
-    use serde_bytes::Bytes;
     use super::super::marker_bytes::*;
+    use super::*;
+    use serde_bytes::Bytes;
+    use serde_derive::Serialize;
 
     macro_rules! bytes {
         ($($slice:expr),* $(,)*) => {
@@ -489,7 +516,6 @@ mod tests {
             NewType(true) => [TRUE],
             NewType(false) => [FALSE],
         };
-
     }
 
     #[test]
@@ -502,7 +528,7 @@ mod tests {
     }
 
     #[test]
-    fn serialize_list () {
+    fn serialize_list() {
         assert_bytes! {
             List(vec![1; 4]) => bytes!([TINY_LIST + 4], [1; 4]),
             List(vec![NewType(String::from("1".repeat(12)))]) => bytes!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
@@ -510,7 +536,7 @@ mod tests {
     }
 
     #[test]
-    fn serialize_enum () {
+    fn serialize_enum() {
         assert_bytes! {
             TestEnum::UnitVariant => bytes!([TINY_MAP + 1, TINY_STRING + 11], b"UnitVariant".to_vec(), [NULL]),
             TestEnum::NewTypeVariant(0) => bytes!([TINY_MAP + 1, TINY_STRING + 14], b"NewTypeVariant".to_vec(), [0]),
@@ -520,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn serialize_map () {
+    fn serialize_map() {
         use std::collections::HashMap;
 
         macro_rules! map {
@@ -535,7 +561,7 @@ mod tests {
 
         #[derive(Serialize)]
         struct TestStruct {
-            one: u8
+            one: u8,
         };
 
         assert_bytes! {

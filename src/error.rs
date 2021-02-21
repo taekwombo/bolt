@@ -1,23 +1,23 @@
-use serde::{ser, de};
+use serde::{de, ser};
 use std::fmt;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub struct Error {
-    err: Box<ErrorCode>
+    err: Box<ErrorCode>,
 }
 
 impl Error {
     pub(crate) fn make(msg: impl Into<ErrorCode>) -> Self {
         Self {
-            err: Box::new(msg.into())
+            err: Box::new(msg.into()),
         }
     }
 
     pub(crate) fn from_code(code: ErrorCode) -> Self {
         Self {
-            err: Box::new(code)
+            err: Box::new(code),
         }
     }
 }
@@ -57,9 +57,9 @@ impl std::error::Error for Error {
 #[derive(Debug)]
 pub(crate) enum ErrorCode {
     Message(Box<str>),
-    ExpectedMarkerByte,     // IMPLEMENTATION ERROR. Not a byte that is a marker
-    ExpectedSizeMarker,     // IMPLEMENTATION ERROR. Marker that stores size
-    MarkerSizeOutOfRange,   // IMPLEMENTATION ERROR. Size overflowed?
+    ExpectedMarkerByte,   // IMPLEMENTATION ERROR. Not a byte that is a marker
+    ExpectedSizeMarker,   // IMPLEMENTATION ERROR. Marker that stores size
+    MarkerSizeOutOfRange, // IMPLEMENTATION ERROR. Size overflowed?
     U64OutOfRangeForI64,
     ExpectedString1Marker,
     ExpectedStringMarker,
@@ -69,6 +69,7 @@ pub(crate) enum ErrorCode {
     ExpectedBytesMarker,
     UnexpectedType,
     ExpectedListMarker,
+    UnexpectedEOSMarker,
     UnexpectedEndOfBytes,
     UnexpectedEmptyPeekedMarker,
     UnexpectedTrailingBytes,
@@ -80,7 +81,10 @@ impl fmt::Display for ErrorCode {
             Self::Message(b_str) => write!(f, "{}", b_str),
             Self::ExpectedSizeMarker => write!(f, "Expected size."),
             Self::ExpectedMarkerByte => write!(f, "Attempt to convert arbitrary u8 into Marker."),
-            Self::MarkerSizeOutOfRange => write!(f, "Attempt to create Marker with size higher than maximum allowed value."),
+            Self::MarkerSizeOutOfRange => write!(
+                f,
+                "Attempt to create Marker with size higher than maximum allowed value."
+            ),
             Self::U64OutOfRangeForI64 => write!(f, "Attempt to convert u64 to i64"),
             Self::ExpectedString1Marker => write!(f, "Expected String(1) Marker."),
             Self::ExpectedStringMarker => write!(f, "Expected String Marker."),
@@ -91,8 +95,11 @@ impl fmt::Display for ErrorCode {
             Self::UnexpectedType => write!(f, "Unexpected Type."),
             Self::ExpectedListMarker => write!(f, "Expected List Marker."),
             Self::UnexpectedEndOfBytes => write!(f, "Unexpected end of bytes."),
-            Self::UnexpectedEmptyPeekedMarker => write!(f, "Unexpected None instead of peeked marker."),
+            Self::UnexpectedEmptyPeekedMarker => {
+                write!(f, "Unexpected None instead of peeked marker.")
+            }
             Self::UnexpectedTrailingBytes => write!(f, "Unexpected trailing bytes left."),
+            Self::UnexpectedEOSMarker => write!(f, "Unexpected End Of Stream marker."),
         }
     }
 }
@@ -109,7 +116,6 @@ impl From<&str> for ErrorCode {
     }
 }
 
-// TODO: Rethink
 impl From<std::str::Utf8Error> for Error {
     fn from(m: std::str::Utf8Error) -> Self {
         Self::make(m.to_string())

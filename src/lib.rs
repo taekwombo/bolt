@@ -1,10 +1,7 @@
-// TODO: Remove
-#![allow(dead_code, unused_variables)]
-
-mod marker_bytes;
-mod marker;
+mod de;
 mod error;
-mod value;
+mod marker;
+mod marker_bytes;
 mod read;
 mod ser;
-mod de;
+mod value;

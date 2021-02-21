@@ -1,42 +1,36 @@
+use super::error::{Error, ErrorCode, Result};
+use super::marker_bytes::*;
 use std::convert::TryFrom;
 use std::fmt;
-use super::marker_bytes::*;
-use super::error::{Error, ErrorCode, Result};
 
 macro_rules! to_bytes {
-    ($marker_b:expr, $t:ty, $e:expr) => {
-        {
-            let mut header = vec![$marker_b];
-            header.extend_from_slice(&<$t>::try_from($e).unwrap().to_be_bytes());
-            header
-        }
-    };
+    ($marker_b:expr, $t:ty, $e:expr) => {{
+        let mut header = vec![$marker_b];
+        header.extend_from_slice(&<$t>::try_from($e).unwrap().to_be_bytes());
+        header
+    }};
     // i64
-    ($marker_b:expr, $e:expr) => {
-        {
-            let mut header = vec![$marker_b];
-            header.extend_from_slice(&$e.to_be_bytes());
-            header
-        }
-    };
+    ($marker_b:expr, $e:expr) => {{
+        let mut header = vec![$marker_b];
+        header.extend_from_slice(&$e.to_be_bytes());
+        header
+    }};
     // f64
-    ($e:expr) => {
-        {
-            let mut header = vec![FLOAT_64];
-            header.extend_from_slice(&$e.to_bits().to_be_bytes());
-            header
-        }
-    }
+    ($e:expr) => {{
+        let mut header = vec![FLOAT_64];
+        header.extend_from_slice(&$e.to_bits().to_be_bytes());
+        header
+    }};
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Marker {
-    I64(i64), // TinyInt, Int8, Int16, Int32, Int64
-    F64(f64), // Float64
+    I64(i64),      // TinyInt, Int8, Int16, Int32, Int64
+    F64(f64),      // Float64
     String(usize), // TinyString, String8, String16, String32
-    List(usize), // TinyList, List8, List16, List32, ListStream
-    Bytes(usize), // Bytes8, Bytes16, Bytes32
-    Map(usize), // TinyMap, Map8, Map16, Map32, MapStream
+    List(usize),   // TinyList, List8, List16, List32, ListStream
+    Bytes(usize),  // Bytes8, Bytes16, Bytes32
+    Map(usize),    // TinyMap, Map8, Map16, Map32, MapStream
     Struct(usize), // TinyStruct, Struct8, Struct16
     Null,
     True,
@@ -57,41 +51,41 @@ impl Marker {
         Ok(())
     }
 
-    pub(crate) fn to_vec (&self) -> Result<Vec<u8>> {
+    pub(crate) fn to_vec(&self) -> Result<Vec<u8>> {
         let bytes_vec = match self {
             Self::String(len) => match len {
                 0x0..=0xF => vec![TINY_STRING + u8::try_from(*len).unwrap()],
                 0x10..=0xFF => vec![STRING_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(STRING_16, i16, *len),
-                0x10000..=0xFFFFFFFF => to_bytes!(STRING_32, i32, *len),
+                0x10000..=0xFFFF_FFFF => to_bytes!(STRING_32, i32, *len),
                 _ => return Err(Error::make("String too long to pack.")),
             },
             Self::I64(int) => match int {
                 -0x10..=0x7F => i8::try_from(*int).unwrap().to_be_bytes().to_vec(),
                 -0x80..=-0x11 => to_bytes!(INT_8, i8, *int),
                 -0x8000..=-0x81 | 0x80..=0x7FFF => to_bytes!(INT_16, i16, *int),
-                -0x80000000..=-0x8001 | 0x8000..=0x7FFFFFFF => to_bytes!(INT_32, i32, *int),
+                -0x8000_0000..=-0x8001 | 0x8000..=0x7FFF_FFFF => to_bytes!(INT_32, i32, *int),
                 _ => to_bytes!(INT_64, int),
-            }
+            },
             Self::List(len) => match len {
                 0x0..=0xF => vec![TINY_LIST + u8::try_from(*len).unwrap()],
                 0x10..=0xFF => vec![LIST_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(LIST_16, u16, *len),
-                0x10000..=0xFFFFFFFF => to_bytes!(LIST_32, u32, *len),
+                0x10000..=0xFFFF_FFFF => to_bytes!(LIST_32, u32, *len),
                 _ => vec![LIST_STREAM],
-            }
+            },
             Self::Bytes(len) => match len {
                 0x0..=0xFF => vec![BYTES_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(BYTES_16, u16, *len),
-                0x10000..=0xFFFFFFFF => to_bytes!(BYTES_32, u32, *len),
+                0x10000..=0xFFFF_FFFF => to_bytes!(BYTES_32, u32, *len),
                 _ => return Err(Error::make("Bytes too long to pack.")),
             },
             Self::Map(len) => match len {
                 0x0..=0xF => vec![TINY_MAP + u8::try_from(*len).unwrap()],
                 0x10..=0xFF => vec![MAP_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(MAP_16, u16, *len),
-                0x10000..=0xFFFFFFFF => to_bytes!(MAP_32, u32, *len),
-                _ => vec![MAP_STREAM]
+                0x10000..=0xFFFF_FFFF => to_bytes!(MAP_32, u32, *len),
+                _ => vec![MAP_STREAM],
             },
             Self::Struct(len) => match len {
                 0x0..=0xF => vec![TINY_STRUCT + u8::try_from(*len).unwrap()],
@@ -137,13 +131,6 @@ mod tests {
         };
     }
 
-    // TODO: Merge into assert_marker_to_vec
-    macro_rules! assert_marker_to_vec_err {
-        ($($marker:expr),* $(,)*) => {
-            $(assert!($marker.to_vec().is_err());)*
-        };
-    }
-
     #[test]
     fn test_marker_to_vec() {
         assert_marker_to_vec! {
@@ -185,10 +172,8 @@ mod tests {
             Marker::EOS => [END_OF_STREAM],
         };
 
-        assert_marker_to_vec_err! {
-            Marker::Struct(256 * 256 * 256),
-            Marker::String(256 * 256 * 256 * 256),
-            Marker::Bytes(256 * 256 * 256 * 256)
-        };
+        assert!(Marker::Struct(256 * 256 * 256).to_vec().is_err());
+        assert!(Marker::String(256 * 256 * 256 * 256).to_vec().is_err());
+        assert!(Marker::Bytes(256 * 256 * 256 * 256).to_vec().is_err());
     }
 }

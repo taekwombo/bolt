@@ -32,4 +32,4 @@ pub(crate) const STRUCT_8: u8 = 0xDC;
 pub(crate) const STRUCT_16: u8 = 0xDD;
 pub(crate) const END_OF_STREAM: u8 = 0xDF;
 
-pub(crate) const STRUCTURE_NAME: &'static str = "__BOLT_STRUCTURE_SERDE_NAME__";
+pub(crate) const STRUCTURE_NAME: &str = "__BOLT_STRUCTURE_SERDE_NAME__";

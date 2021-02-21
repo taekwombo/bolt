@@ -10,14 +10,9 @@ macro_rules! bytes_to_usize {
         ($b7 as usize) << 8 | $b8 as usize
     };
     ($b5:expr, $b6:expr, $b7:expr, $b8:expr) => {
-        (($b5 as usize) << 24)
-            | (($b6 as usize) << 16)
-            | (($b7 as usize) << 8)
-            | $b8 as usize
+        (($b5 as usize) << 24) | (($b6 as usize) << 16) | (($b7 as usize) << 8) | $b8 as usize
     };
 }
-
-type MarkerHint = (Marker, usize);
 
 #[derive(Debug)]
 pub struct ByteReader<'a> {
@@ -31,7 +26,7 @@ pub struct ByteReader<'a> {
 // consume_bytes -> &'a [u8]
 
 impl<'a> ByteReader<'a> {
-    pub fn new (bytes: &'a [u8]) -> Self {
+    pub fn new(bytes: &'a [u8]) -> Self {
         Self {
             bytes,
             index: 0,
@@ -109,7 +104,7 @@ impl<'a> ByteReader<'a> {
 
                 self.peeked = 5;
                 Marker::Map(bytes_to_usize!(b5, b6, b7, b8))
-            },
+            }
             MAP_STREAM => {
                 self.peeked = 1;
                 Marker::Map(std::usize::MAX)
@@ -267,7 +262,8 @@ impl<'a> ByteReader<'a> {
     }
 
     fn get_byte(&self, ahead: usize) -> Result<&u8> {
-        self.bytes.get(self.index + ahead)
+        self.bytes
+            .get(self.index + ahead)
             .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))
     }
 }

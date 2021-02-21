@@ -1,10 +1,9 @@
-mod structure;
 mod de;
 mod ser;
 
+use serde_bytes::ByteBuf;
 use std::collections::HashMap;
 use std::fmt;
-use serde_bytes::{Bytes, ByteBuf};
 
 #[derive(Debug, PartialEq)]
 pub enum Value {
@@ -15,9 +14,7 @@ pub enum Value {
     String(String),
     List(Vec<Value>),
     Map(HashMap<String, Value>),
-    // TODO: Revisit Bytes
-    Bytes(ByteBuf)
-    // Structure(Structure),
+    Bytes(ByteBuf), // TODO: Revisit Bytes - use Bytes instead of ByteBuf
 }
 
 impl fmt::Display for Value {
@@ -31,7 +28,6 @@ impl fmt::Display for Value {
             Self::List(v) => f.debug_tuple("List").field(v).finish(),
             Self::Map(v) => f.debug_tuple("Map").field(v).finish(),
             Self::Bytes(v) => f.debug_tuple("Bytes").field(v).finish(),
-            // Self::Structure(v) => write!(f, "{}", v),
         }
     }
 }
@@ -42,12 +38,48 @@ impl Default for Value {
     }
 }
 
+#[derive(Debug, serde_derive::Deserialize, PartialEq)]
+pub struct Structure(Vec<Value>);
+
+impl Structure {
+    fn empty() -> Self {
+        Self(Vec::new())
+    }
+
+    fn push<V: Into<Value>>(&mut self, value: V) {
+        self.0.push(value.into());
+    }
+}
+
+impl fmt::Display for Structure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0.is_empty() {
+            return f.write_str("Structure()");
+        }
+        let mut tuple = f.debug_tuple("Structure");
+        self.0.iter().for_each(|v| {
+            tuple.field(v);
+        });
+        tuple.finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::de::from_bytes;
+    use crate::ser::to_bytes;
 
     #[test]
-    fn value_default () {
+    fn value_test() {
         assert_eq!(Value::default(), Value::Null);
+        let mut s: Structure = Structure::empty();
+        s.push(Value::I64(10));
+        println!("{:?}", from_bytes::<Structure>(&to_bytes(&s).unwrap()));
+    }
+
+    #[test]
+    fn structure_test() {
+        assert_eq!(Structure::empty(), Structure::empty());
     }
 }

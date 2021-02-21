@@ -1,9 +1,9 @@
+use super::Value;
+use serde::de;
+use serde_bytes::ByteBuf;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
-use super::Value;
-use serde::de;
-use serde_bytes::{Bytes, ByteBuf};
 
 struct ValueVisitor;
 
@@ -48,7 +48,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
 
     fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
-        D: de::Deserializer<'de>
+        D: de::Deserializer<'de>,
     {
         de::Deserialize::deserialize(deserializer)
     }
@@ -59,7 +59,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
 
     fn visit_seq<V>(self, mut seq_access: V) -> Result<Self::Value, V::Error>
     where
-        V: de::SeqAccess<'de>
+        V: de::SeqAccess<'de>,
     {
         let mut list = Vec::new();
         while let Some(elem) = seq_access.next_element()? {
@@ -70,7 +70,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
-        V: de::MapAccess<'de>
+        V: de::MapAccess<'de>,
     {
         let mut map = HashMap::new();
         while let Some(key) = map_access.next_key()? {
@@ -83,7 +83,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
 impl<'de> de::Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: de::Deserializer<'de>
+        D: de::Deserializer<'de>,
     {
         deserializer.deserialize_any(ValueVisitor)
     }
@@ -92,8 +92,8 @@ impl<'de> de::Deserialize<'de> for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::super::marker_bytes::*;
-    use super::super::super::de::from_bytes;
+    use crate::de::from_bytes;
+    use crate::marker_bytes::*;
 
     #[test]
     fn deserialize_value() {
