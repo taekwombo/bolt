@@ -131,11 +131,15 @@ impl<'de> Deserializer<'de> {
         }
     }
 
-    fn parse_list(&mut self) -> Result<usize> {
+    fn parse_list_or_structure(&mut self) -> Result<usize> {
         match self.read.peek_marker()? {
             Marker::List(size) => {
                 self.read.scratch_peeked();
                 Ok(size)
+            }
+            Marker::Struct(size) => {
+                self.read.scratch_peeked();
+                Ok(size + 1)
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
         }
@@ -148,17 +152,6 @@ impl<'de> Deserializer<'de> {
                 Ok(size)
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
-        }
-    }
-
-    fn parse_struct(&mut self) -> Result<(u8, usize)> {
-        match self.read.peek_marker()? {
-            Marker::Struct(size) => {
-                self.read.scratch_peeked();
-                let bytes = self.read.consume_bytes(1)?;
-                Ok((bytes[0], size))
-            }
-            _ => Err(Error::from_code(ErrorCode::ExpectedListMarker))
         }
     }
 
@@ -362,7 +355,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>
     {
-        let list_len = self.parse_list()?;
+        let list_len = self.parse_list_or_structure()?;
         visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 

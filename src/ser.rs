@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use serde::{ser, Serialize};
 use super::marker::Marker;
+use super::marker_bytes::STRUCTURE_NAME;
 use super::error::{Error, ErrorCode, Result};
 
 #[derive(Clone, Debug)]
@@ -165,7 +166,12 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct> {
-        self.output.append(&mut Marker::List(len).to_vec()?);
+        // Serialize Structure as tuple, using Structure marker.
+        if name == STRUCTURE_NAME {
+            self.output.append(&mut Marker::Struct(len).to_vec()?);
+        } else {
+            self.output.append(&mut Marker::List(len).to_vec()?);
+        }
         Ok(Compound::new_static(self))
     }
 

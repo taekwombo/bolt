@@ -23,6 +23,7 @@ impl ser::Serialize for Value {
                 }
                 map.end()
             },
+            Value::Bytes(v) => serializer.serialize_bytes(&*v),
             // Value::Structure(v) => v.serialize(serializer),
         }
     }

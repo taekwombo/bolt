@@ -4,8 +4,9 @@ mod ser;
 
 use std::collections::HashMap;
 use std::fmt;
+use serde_bytes::{Bytes, ByteBuf};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Value {
     Null,
     Bool(bool),
@@ -14,6 +15,8 @@ pub enum Value {
     String(String),
     List(Vec<Value>),
     Map(HashMap<String, Value>),
+    // TODO: Revisit Bytes
+    Bytes(ByteBuf)
     // Structure(Structure),
 }
 
@@ -27,6 +30,7 @@ impl fmt::Display for Value {
             Self::String(v) => f.debug_tuple("String").field(v).finish(),
             Self::List(v) => f.debug_tuple("List").field(v).finish(),
             Self::Map(v) => f.debug_tuple("Map").field(v).finish(),
+            Self::Bytes(v) => f.debug_tuple("Bytes").field(v).finish(),
             // Self::Structure(v) => write!(f, "{}", v),
         }
     }
@@ -38,25 +42,12 @@ impl Default for Value {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use super::super::marker_bytes::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn build_value () {
-//         let s = Structure(1, vec![
-//             Value::Null,
-//             Value::List(vec![
-//                 Value::String("SIEMANKO".into()),
-//                 Value::String("WITAM".into()),
-//                 Value::String("W".into()),
-//                 Value::String("MOJEJ".into()),
-//                 Value::String("KUCHNI".into()),
-//             ])
-//         ]);
-//         println!("SERIALIZED: {:?}", super::super::ser::to_bytes(&s).unwrap());
-//         let s: Structure = super::super::de::from_bytes(&[TINY_STRUCT + 2, 1, 1, 1]).unwrap();
-//         println!("DESERIALIZED: {:?}", s);
-//     }
-// }
+    #[test]
+    fn value_default () {
+        assert_eq!(Value::default(), Value::Null);
+    }
+}
