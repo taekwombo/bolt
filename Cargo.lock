@@ -22,7 +22,7 @@ version = "1.0.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "serde-bolt"
+name = "serde_bolt"
 version = "0.1.0"
 dependencies = [
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
