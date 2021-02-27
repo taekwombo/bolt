@@ -1,6 +1,6 @@
 use super::error::{Error, ErrorCode, Result};
 use super::marker::Marker;
-use super::marker_bytes::*;
+use super::constants::marker::*;
 
 macro_rules! bytes_to_usize {
     ($b8:expr) => {

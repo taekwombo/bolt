@@ -93,7 +93,7 @@ impl<'de> de::Deserialize<'de> for Value {
 mod tests {
     use super::*;
     use crate::de::from_bytes;
-    use crate::marker_bytes::*;
+    use crate::constants::marker::*;
 
     #[test]
     fn deserialize_value() {

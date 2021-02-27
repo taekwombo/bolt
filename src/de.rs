@@ -533,7 +533,7 @@ impl<'a, 'de: 'a> de::VariantAccess<'de> for VariantAccess<'a, 'de> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::marker_bytes::*;
+    use crate::constants::marker::*;
     use super::*;
     use serde_bytes::{ByteBuf, Bytes};
     use serde_derive::Deserialize;
