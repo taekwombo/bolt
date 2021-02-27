@@ -1,4 +1,4 @@
-pub(crate) fn map_assertion_err (e: crate::error::Error) {
+pub(crate) fn map_assertion_err(e: crate::error::Error) {
     eprintln!("{}", e);
 }
 
@@ -6,10 +6,19 @@ pub(crate) fn map_assertion_err (e: crate::error::Error) {
 macro_rules! bytes {
     ($($slice:expr),* $(,)*) => {
         {
-            let mut arr: Vec<u8> = Vec::new(); 
+            let mut arr: Vec<u8> = Vec::new();
             $(arr.extend_from_slice(&$slice);)*
             arr
         }
+    }
+}
+
+#[macro_export]
+macro_rules! assert_ser_de {
+    ($($value:expr),* $(,)*) => {
+        $(
+            assert_eq!($value, $crate::from_bytes(&$crate::to_bytes(&$value).unwrap()).unwrap());
+        )*
     }
 }
 
@@ -33,9 +42,9 @@ macro_rules! assert_ser_err {
 
 #[macro_export]
 macro_rules! assert_de {
-    ($($bytes:expr => $value:expr),* $(,)*) => {
+    ($($bytes:expr => $t:ty: $value:expr),* $(,)*) => {
         $(
-            assert_eq!($crate::from_bytes(&$bytes).map_err($crate::macros::map_assertion_err).unwrap(), $value);
+            assert!($crate::from_bytes::<$t>(&$bytes).map_err($crate::macros::map_assertion_err).unwrap() == $value);
         )*
     }
 }
@@ -48,4 +57,3 @@ macro_rules! assert_de_err {
         )*
     }
 }
-

@@ -1,5 +1,6 @@
 use super::Value;
-use serde::de;
+use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_SIG_KEY};
+use serde::de::{self, Error as SerdeError};
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -71,12 +72,33 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
+        V::Error: SerdeError,
     {
-        let mut map = HashMap::new();
-        while let Some(key) = map_access.next_key()? {
-            map.insert(key, map_access.next_value()?);
+        let first_key: Option<&str> = map_access.next_key()?;
+        match first_key {
+            Some(key) if key == STRUCTURE_SIG_KEY => {
+                let signature: u8 = map_access.next_value()?;
+                map_access.next_key::<&str>()?;
+                let fields: Vec<Value> = map_access.next_value()?;
+
+                match map_access.next_key()? {
+                    Option::<&str>::Some(k) => Err(V::Error::custom(format!(
+                        "Unexpecter key: {} when deseralizing Structure",
+                        k
+                    ))),
+                    None => Ok(Value::Structure { signature, fields }),
+                }
+            }
+            Some(key) => {
+                let mut map: HashMap<String, Value> = HashMap::new();
+                map.insert(String::from(key), map_access.next_value()?);
+                while let Some(key) = map_access.next_key::<&str>()? {
+                    map.insert(String::from(key), map_access.next_value()?);
+                }
+                Ok(Value::Map(map))
+            }
+            None => Ok(Value::Map(HashMap::new())),
         }
-        Ok(Value::Map(map))
     }
 }
 
@@ -86,23 +108,5 @@ impl<'de> de::Deserialize<'de> for Value {
         D: de::Deserializer<'de>,
     {
         deserializer.deserialize_any(ValueVisitor)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::de::from_bytes;
-    use crate::constants::marker::*;
-
-    #[test]
-    fn deserialize_value() {
-        assert!(from_bytes::<Value>(&[NULL]).is_ok());
-        assert!(from_bytes::<Value>(&[127]).is_ok());
-        assert!(from_bytes::<Value>(&[TINY_STRING + 1, 49]).is_ok());
-        assert!(from_bytes::<Value>(&[FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0]).is_ok());
-        assert!(from_bytes::<Value>(&[TINY_LIST + 3, 0, 1, 0]).is_ok());
-        assert!(from_bytes::<Value>(&[TINY_MAP]).is_ok());
-        assert!(from_bytes::<Value>(&[BYTES_8, 1, 1]).is_ok());
     }
 }

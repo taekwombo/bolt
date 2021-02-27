@@ -1,32 +1,36 @@
+use super::constants::{STRUCTURE_FIELDS_KEY_B, STRUCTURE_SIG_KEY_B};
 use super::error::{Error, ErrorCode, Result};
 use super::marker::Marker;
-use super::read::ByteReader;
+use super::read::{ByteReader, Unpacker};
 use serde::{de, Deserialize};
 
 pub fn from_bytes<'de, T>(bytes: &'de [u8]) -> Result<T>
 where
     T: Deserialize<'de>,
 {
-    let mut de = Deserializer::new(bytes);
+    let mut de: Deserializer<ByteReader> = Deserializer::new(bytes);
     let value = de::Deserialize::deserialize(&mut de)?;
     de.has_finished()?;
     Ok(value)
 }
 
 #[derive(Debug)]
-pub struct Deserializer<'de> {
-    read: ByteReader<'de>,
+pub struct Deserializer<U> {
+    read: U,
 }
 
-impl<'de> Deserializer<'de> {
+impl<'de, U> Deserializer<U>
+where
+    U: Unpacker<'de>,
+{
     pub fn new(bytes: &'de [u8]) -> Self {
         Self {
-            read: ByteReader::new(bytes),
+            read: U::new(bytes),
         }
     }
 
     fn has_finished(&self) -> Result<()> {
-        if self.read.index == self.read.bytes.len() {
+        if self.read.done() {
             Ok(())
         } else {
             Err(Error::from_code(ErrorCode::UnexpectedTrailingBytes))
@@ -34,16 +38,19 @@ impl<'de> Deserializer<'de> {
     }
 }
 
-impl<'de> Deserializer<'de> {
+impl<'de, U> Deserializer<U>
+where
+    U: Unpacker<'de>,
+{
     fn parse_bool(&mut self) -> Result<bool> {
         let marker = self.read.peek_marker()?;
         match marker {
             Marker::True => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(true)
             }
             Marker::False => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(false)
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedBoolMarker)),
@@ -55,13 +62,24 @@ impl<'de> Deserializer<'de> {
         T: std::convert::TryFrom<i64>,
         <T as std::convert::TryFrom<i64>>::Error: std::error::Error + 'static,
     {
+        let v_marker = self.read.get_virtual_marker();
+        if let Some(marker) = v_marker {
+            return match marker {
+                Marker::I64(int) => {
+                    self.read.clear_virtual();
+                    Ok(T::try_from(int).map_err(|e| Error::make(e.to_string()))?)
+                }
+                _ => Err(Error::from_code(ErrorCode::ExpectedIntMarker)),
+            };
+        }
+
         match self.read.peek_marker()? {
             Marker::I64(num) => {
-                let res = T::try_from(num);
-                if res.is_ok() {
-                    self.read.scratch_peeked();
+                let int = T::try_from(num);
+                if int.is_ok() {
+                    self.read.consume_peeked();
                 }
-                res.map_err(|e| Error::make(e.to_string()))
+                int.map_err(|e| Error::make(e.to_string()))
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedIntMarker)),
         }
@@ -70,7 +88,7 @@ impl<'de> Deserializer<'de> {
     fn parse_f64(&mut self) -> Result<f64> {
         match self.read.peek_marker()? {
             Marker::F64(num) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(num)
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedFloatMarker)),
@@ -80,7 +98,7 @@ impl<'de> Deserializer<'de> {
     fn parse_char(&mut self) -> Result<char> {
         match self.read.peek_marker()? {
             Marker::String(len) if len == 1 => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(1)?;
                 Ok(bytes[0] as char)
             }
@@ -89,9 +107,16 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_str(&mut self) -> Result<&'de str> {
+        let v_marker = self.read.get_virtual_marker();
+        if let Some(marker) = v_marker {
+            let s = self.read.get_virtual_value().expect("Value to exist");
+            self.read.clear_virtual();
+            return Ok(std::str::from_utf8(s)?);
+        }
+
         match self.read.peek_marker()? {
             Marker::String(len) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(len)?;
                 Ok(std::str::from_utf8(bytes)?)
             }
@@ -102,7 +127,7 @@ impl<'de> Deserializer<'de> {
     fn parse_string(&mut self) -> Result<String> {
         match self.read.peek_marker()? {
             Marker::String(len) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(len)?.to_vec();
                 Ok(String::from_utf8(bytes)?)
             }
@@ -113,7 +138,7 @@ impl<'de> Deserializer<'de> {
     fn parse_bytes(&mut self) -> Result<&'de [u8]> {
         match self.read.peek_marker()? {
             Marker::Bytes(len) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(len)?;
                 Ok(bytes)
             }
@@ -124,21 +149,32 @@ impl<'de> Deserializer<'de> {
     fn parse_null(&mut self) -> Result<bool> {
         match self.read.peek_marker()? {
             Marker::Null => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(true)
             }
             _ => Ok(false),
         }
     }
 
-    fn parse_list_or_structure(&mut self) -> Result<usize> {
+    fn parse_list(&mut self) -> Result<usize> {
+        let v_marker = self.read.get_virtual_marker();
+        if let Some(marker) = v_marker {
+            return match marker {
+                Marker::List(len) => {
+                    self.read.clear_virtual();
+                    Ok(len)
+                }
+                _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
+            };
+        }
+
         match self.read.peek_marker()? {
             Marker::List(size) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(size)
             }
             Marker::Struct(size) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(size + 1)
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
@@ -148,7 +184,7 @@ impl<'de> Deserializer<'de> {
     fn parse_map(&mut self) -> Result<usize> {
         match self.read.peek_marker()? {
             Marker::Map(size) => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(size)
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
@@ -158,7 +194,7 @@ impl<'de> Deserializer<'de> {
     fn parse_enum(&mut self) -> Result<()> {
         match self.read.peek_marker()? {
             Marker::Map(len) if len == 1 => {
-                self.read.scratch_peeked();
+                self.read.consume_peeked();
                 Ok(())
             }
             _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
@@ -170,7 +206,7 @@ impl<'de> Deserializer<'de> {
         if let Ok(marker) = marker {
             match marker {
                 Marker::EOS => {
-                    self.read.scratch_peeked();
+                    self.read.consume_peeked();
                     true
                 }
                 _ => false,
@@ -181,7 +217,10 @@ impl<'de> Deserializer<'de> {
     }
 }
 
-impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
+impl<'de, 'a, U> de::Deserializer<'de> for &'a mut Deserializer<U>
+where
+    U: Unpacker<'de>,
+{
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -197,7 +236,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             Marker::String(_) => self.deserialize_str(visitor),
             Marker::I64(_) => self.deserialize_i64(visitor),
             Marker::F64(_) => self.deserialize_f64(visitor),
-            Marker::Struct(_) => self.deserialize_seq(visitor),
+            Marker::Struct(_) => self.deserialize_map(visitor),
             Marker::EOS => Err(Error::from_code(ErrorCode::UnexpectedEOSMarker)),
         }
     }
@@ -354,7 +393,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        let list_len = self.parse_list_or_structure()?;
+        let list_len = self.parse_list()?;
         visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
@@ -376,6 +415,15 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
+        if let Marker::Struct(len) = self.read.peek_marker()? {
+            self.read.consume_peeked();
+            return visitor.visit_map(StructureAccess {
+                de: self,
+                size: len,
+                state: StructureAccessState::Signature,
+            });
+        }
+
         let map_len = self.parse_map()?;
         visitor.visit_map(MapAccess {
             de: self,
@@ -419,27 +467,32 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.deserialize_str(visitor)
     }
 
-    // TODO: IMPLEMENT
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        visitor.visit_none()
+        self.deserialize_any(visitor)
     }
 }
 
-struct SeqAccess<'a, 'de: 'a> {
-    de: &'a mut Deserializer<'de>,
+struct SeqAccess<'a, U> {
+    de: &'a mut Deserializer<U>,
     len: usize,
 }
 
-impl<'a, 'de> SeqAccess<'a, 'de> {
-    fn new(de: &'a mut Deserializer<'de>, len: usize) -> Self {
+impl<'a, 'de, U> SeqAccess<'a, U>
+where
+    U: Unpacker<'de>,
+{
+    fn new(de: &'a mut Deserializer<U>, len: usize) -> Self {
         Self { de, len }
     }
 }
 
-impl<'de, 'a> de::SeqAccess<'de> for SeqAccess<'a, 'de> {
+impl<'a, 'de, U> de::SeqAccess<'de> for SeqAccess<'a, U>
+where
+    U: Unpacker<'de>,
+{
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
@@ -456,12 +509,15 @@ impl<'de, 'a> de::SeqAccess<'de> for SeqAccess<'a, 'de> {
     }
 }
 
-struct MapAccess<'a, 'de: 'a> {
-    de: &'a mut Deserializer<'de>,
+struct MapAccess<'a, U> {
+    de: &'a mut Deserializer<U>,
     len: usize,
 }
 
-impl<'de, 'a> de::MapAccess<'de> for MapAccess<'a, 'de> {
+impl<'a, 'de, U> de::MapAccess<'de> for MapAccess<'a, U>
+where
+    U: Unpacker<'de>,
+{
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
@@ -485,11 +541,14 @@ impl<'de, 'a> de::MapAccess<'de> for MapAccess<'a, 'de> {
     }
 }
 
-struct VariantAccess<'a, 'de: 'a> {
-    de: &'a mut Deserializer<'de>,
+struct VariantAccess<'a, U> {
+    de: &'a mut Deserializer<U>,
 }
 
-impl<'a, 'de: 'a> de::EnumAccess<'de> for VariantAccess<'a, 'de> {
+impl<'a, 'de, U> de::EnumAccess<'de> for VariantAccess<'a, U>
+where
+    U: Unpacker<'de>,
+{
     type Error = Error;
     type Variant = Self;
 
@@ -502,7 +561,10 @@ impl<'a, 'de: 'a> de::EnumAccess<'de> for VariantAccess<'a, 'de> {
     }
 }
 
-impl<'a, 'de: 'a> de::VariantAccess<'de> for VariantAccess<'a, 'de> {
+impl<'a, 'de, U> de::VariantAccess<'de> for VariantAccess<'a, U>
+where
+    U: Unpacker<'de>,
+{
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {
@@ -531,10 +593,75 @@ impl<'a, 'de: 'a> de::VariantAccess<'de> for VariantAccess<'a, 'de> {
     }
 }
 
+#[derive(Debug)]
+enum StructureAccessState {
+    Signature,
+    Fields,
+    Done,
+}
+
+struct StructureAccess<'a, U> {
+    de: &'a mut Deserializer<U>,
+    size: usize,
+    state: StructureAccessState,
+}
+
+impl<'a, 'de, U> de::MapAccess<'de> for StructureAccess<'a, U>
+where
+    U: Unpacker<'de>,
+{
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    where
+        K: de::DeserializeSeed<'de>,
+    {
+        match self.state {
+            StructureAccessState::Signature => {
+                self.de
+                    .read
+                    .set_virtual(Marker::String(0), Some(STRUCTURE_SIG_KEY_B));
+                let key = seed.deserialize(&mut *self.de)?;
+                Ok(Some(key))
+            }
+            StructureAccessState::Fields => {
+                self.de
+                    .read
+                    .set_virtual(Marker::String(0), Some(STRUCTURE_FIELDS_KEY_B));
+                let key = seed.deserialize(&mut *self.de)?;
+                Ok(Some(key))
+            }
+            StructureAccessState::Done => Ok(None),
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        match self.state {
+            StructureAccessState::Signature => {
+                let bytes = self.de.read.consume_bytes(1)?;
+                let int = i64::from(bytes[0]);
+
+                self.de.read.set_virtual(Marker::I64(int), None);
+                self.state = StructureAccessState::Fields;
+                Ok(seed.deserialize(&mut *self.de)?)
+            }
+            StructureAccessState::Fields => {
+                self.de.read.set_virtual(Marker::List(self.size), None);
+                self.state = StructureAccessState::Done;
+                Ok(seed.deserialize(&mut *self.de)?)
+            }
+            StructureAccessState::Done => Err(Error::make("Noe more values")),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::constants::marker::*;
     use super::*;
+    use crate::constants::marker::*;
     use serde_bytes::{ByteBuf, Bytes};
     use serde_derive::Deserialize;
 
@@ -569,7 +696,9 @@ mod tests {
         NewTypeVariant(u8),
         TupleVariant(u8, u8),
         #[allow(dead_code)]
-        StructVarint { one: u8 },
+        StructVarint {
+            one: u8,
+        },
     }
 
     #[test]

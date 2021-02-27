@@ -15,6 +15,7 @@ pub enum Value {
     List(Vec<Value>),
     Map(HashMap<String, Value>),
     Bytes(ByteBuf), // TODO: Revisit Bytes - use Bytes instead of ByteBuf
+    Structure { signature: u8, fields: Vec<Value> },
 }
 
 impl fmt::Display for Value {
@@ -28,6 +29,9 @@ impl fmt::Display for Value {
             Self::List(v) => f.debug_tuple("List").field(v).finish(),
             Self::Map(v) => f.debug_tuple("Map").field(v).finish(),
             Self::Bytes(v) => f.debug_tuple("Bytes").field(v).finish(),
+            Self::Structure { signature, .. } => {
+                f.debug_tuple("Structure").field(signature).finish()
+            }
         }
     }
 }
@@ -38,48 +42,63 @@ impl Default for Value {
     }
 }
 
-#[derive(Debug, serde_derive::Deserialize, PartialEq)]
-pub struct Structure(Vec<Value>);
-
-impl Structure {
-    pub fn empty() -> Self {
-        Self(Vec::new())
-    }
-
-    pub fn push<V: Into<Value>>(&mut self, value: V) {
-        self.0.push(value.into());
-    }
-}
-
-impl fmt::Display for Structure {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.0.is_empty() {
-            return f.write_str("Structure()");
-        }
-        let mut tuple = f.debug_tuple("Structure");
-        self.0.iter().for_each(|v| {
-            tuple.field(v);
-        });
-        tuple.finish()
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use serde_bytes::ByteBuf;
+    use std::collections::HashMap;
+
     use super::*;
-    use crate::de::from_bytes;
-    use crate::ser::to_bytes;
+    use crate::constants::marker::*;
+    use crate::*;
 
     #[test]
-    fn value_test() {
-        assert_eq!(Value::default(), Value::Null);
-        let mut s: Structure = Structure::empty();
-        s.push(Value::I64(10));
-        assert_eq!(s, from_bytes::<Structure>(&to_bytes(&s).unwrap()).unwrap());
-    }
+    fn value_serde() {
+        assert_ser_de! {
+            Value::default(),
+            Value::Null,
+            Value::Bool(true),
+            Value::Bool(false),
+            Value::I64(0),
+            Value::F64(0.0),
+            Value::String(String::from("")),
+            Value::List(vec![]),
+            Value::Bytes(ByteBuf::new()),
+            Value::Map(HashMap::new()),
+            Value::Structure { signature: 0, fields: vec![] },
+            Value::Structure {
+                signature: 0,
+                fields: vec![
+                    Value::Bool(true),
+                    Value::List(vec![Value::Null, Value::I64(1000)]),
+                    Value::Map(HashMap::new()),
+                ],
+            },
+        };
 
-    #[test]
-    fn structure_test() {
-        assert_eq!(Structure::empty(), Structure::empty());
+        assert_ser! {
+           Value::Null => [NULL],
+           Value::Bool(true) => [TRUE],
+           Value::Bool(false) => [FALSE],
+           Value::List(vec![]) => [TINY_LIST],
+           Value::Map(HashMap::new()) => [TINY_MAP],
+           Value::String(String::from("")) => [TINY_STRING],
+           Value::I64(0i64) => [0],
+           Value::F64(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
+           Value::Bytes(ByteBuf::new()) => [BYTES_8, 0],
+           Value::Structure { signature: 0, fields: vec![] } => [TINY_STRUCT, 0],
+        };
+
+        let mut buffer = ByteBuf::with_capacity(1);
+        buffer.push(1);
+
+        assert_de! {
+            [NULL] => Value: Value::Null,
+            [127] => Value: Value::I64(127),
+            [TINY_STRING + 1, 49] => Value: Value::String(String::from("1")),
+            [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0] => Value: Value::F64(0.0),
+            [TINY_LIST + 3, 0, 1, 0] => Value: Value::List(vec![Value::I64(0), Value::I64(1), Value::I64(0)]),
+            [TINY_MAP] => Value: Value::Map(HashMap::new()),
+            [BYTES_8, 1, 1] => Value: Value::Bytes(buffer),
+        };
     }
 }

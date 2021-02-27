@@ -1,5 +1,5 @@
-use super::error::{Error, ErrorCode, Result};
 use super::constants::marker::*;
+use super::error::{Error, ErrorCode, Result};
 use std::convert::TryFrom;
 use std::fmt;
 

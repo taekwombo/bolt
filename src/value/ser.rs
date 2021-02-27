@@ -1,5 +1,5 @@
-use super::{Structure, Value};
-use crate::marker_bytes::STRUCTURE_NAME;
+use super::Value;
+use crate::constants::STRUCTURE_NAME;
 use serde::ser::{self, SerializeMap, SerializeSeq, SerializeTupleStruct};
 
 impl ser::Serialize for Value {
@@ -25,25 +25,14 @@ impl ser::Serialize for Value {
                 map.end()
             }
             Value::Bytes(v) => serializer.serialize_bytes(&*v),
+            Value::Structure { signature, fields } => {
+                let mut tuple = serializer.serialize_tuple_struct(STRUCTURE_NAME, fields.len())?;
+                tuple.serialize_field(signature)?;
+                for elem in fields.iter() {
+                    tuple.serialize_field(elem)?;
+                }
+                tuple.end()
+            }
         }
-    }
-}
-
-impl ser::Serialize for Structure {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        let len = if self.0.is_empty() {
-            0
-        } else {
-            self.0.len() - 1
-        };
-
-        let mut tuple_struct = serializer.serialize_tuple_struct(STRUCTURE_NAME, len)?;
-        for elem in self.0.iter() {
-            tuple_struct.serialize_field(elem)?;
-        }
-        tuple_struct.end()
     }
 }

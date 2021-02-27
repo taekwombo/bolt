@@ -1,5 +1,6 @@
+use serde_bolt::{from_bytes, to_bytes, Value};
 use serde_bytes;
-use serde_bolt::{from_bytes, to_bytes, Value, Structure};
+use std::collections::HashMap;
 
 macro_rules! ser_and_de {
     ($($value:expr => $type:ty),* $(,)*) => {
@@ -7,7 +8,7 @@ macro_rules! ser_and_de {
     };
 }
 
-fn create_map (v: &[&str]) -> std::collections::HashMap<String, Value> {
+fn create_map(v: &[&str]) -> std::collections::HashMap<String, Value> {
     let mut map = std::collections::HashMap::new();
     for key in v {
         map.insert((*key).to_owned(), Value::I64(map.len() as i64));
@@ -15,7 +16,7 @@ fn create_map (v: &[&str]) -> std::collections::HashMap<String, Value> {
     map
 }
 
-fn create_byte_buf () -> serde_bytes::ByteBuf {
+fn create_byte_buf() -> serde_bytes::ByteBuf {
     let mut buf = serde_bytes::ByteBuf::new();
     for i in 0..127u8 {
         buf.push(i);
@@ -24,12 +25,7 @@ fn create_byte_buf () -> serde_bytes::ByteBuf {
 }
 
 #[test]
-fn serialize_and_deserialize () {
-    let mut structure = Structure::empty();
-    for i in 0..16u8 {
-        structure.push(Value::I64(i as i64));
-    }
-
+fn serialize_and_deserialize() {
     ser_and_de! {
         -0x80 => i8,
         -0x8000 => i16,
@@ -53,6 +49,27 @@ fn serialize_and_deserialize () {
         Value::String(String::from("owned")) => Value,
         Value::Map(create_map(&vec!["one", "two", "three"])) => Value,
         Value::Bytes(create_byte_buf()) => Value,
-        structure => Structure,
     };
+}
+
+#[test]
+fn serialize_and_skip_unknown() {
+    let mut map_a = create_map(&["key1", "key2", "key3"]);
+    let bytes = to_bytes(&map_a).unwrap();
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    struct TStruct {
+        key1: u8,
+        key2: u8,
+    }
+
+    println!("{:?}", from_bytes::<TStruct>(&bytes).unwrap());
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    #[serde(deny_unknown_fields)]
+    struct TStructNoUnknown {
+        key1: u8,
+    }
+
+    assert!(from_bytes::<TStructNoUnknown>(&bytes).is_err());
 }

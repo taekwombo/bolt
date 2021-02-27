@@ -1,6 +1,6 @@
+use super::constants::STRUCTURE_NAME;
 use super::error::{Error, ErrorCode, Result};
 use super::marker::Marker;
-use super::constants::STRUCTURE_NAME;
 use serde::{ser, Serialize};
 use std::convert::TryFrom;
 
@@ -455,8 +455,8 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::marker::*;
     use super::*;
+    use crate::constants::marker::*;
     use serde_bytes::Bytes;
     use serde_derive::Serialize;
 

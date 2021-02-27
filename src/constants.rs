@@ -1,4 +1,8 @@
 pub(crate) const STRUCTURE_NAME: &str = "__BOLT_STRUCTURE_SERDE_NAME__";
+pub(crate) const STRUCTURE_SIG_KEY: &str = "__BOLT_STRUCTURE_SIGNATURE_KEY__";
+pub(crate) const STRUCTURE_SIG_KEY_B: &[u8] = b"__BOLT_STRUCTURE_SIGNATURE_KEY__";
+pub(crate) const STRUCTURE_FIELDS_KEY: &str = "__BOLT_STRUCTURE_FIELDS_KEY__";
+pub(crate) const STRUCTURE_FIELDS_KEY_B: &[u8] = b"__BOLT_STRUCTURE_FIELDS_KEY__";
 
 pub(crate) mod marker {
     pub(crate) const TINY_STRING: u8 = 0x80;
@@ -52,4 +56,3 @@ pub(crate) mod signature {
     pub(crate) const TYPE_PATH: u8 = 0x50;
     pub(crate) const TYPE_UNBOUND_RELATIONSHIP: u8 = 0x72;
 }
-

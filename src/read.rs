@@ -1,6 +1,6 @@
+use super::constants::marker::*;
 use super::error::{Error, ErrorCode, Result};
 use super::marker::Marker;
-use super::constants::marker::*;
 
 macro_rules! bytes_to_usize {
     ($b8:expr) => {
@@ -14,63 +14,104 @@ macro_rules! bytes_to_usize {
     };
 }
 
-#[derive(Debug)]
-pub struct ByteReader<'a> {
-    pub bytes: &'a [u8],
-    pub index: usize,
-    pub peeked: usize,
+pub trait Unpacker<'a> {
+    fn new(bytes: &'a [u8]) -> Self;
+
+    fn set_virtual(&mut self, marker: Marker, bytes: Option<&'static [u8]>);
+
+    fn get_virtual_marker(&mut self) -> Option<Marker>;
+
+    fn get_virtual_value(&mut self) -> Option<&'static [u8]>;
+
+    fn clear_virtual(&mut self);
+
+    fn consume_bytes(&mut self, len: usize) -> Result<&'a [u8]>;
+
+    fn peek_marker(&mut self) -> Result<Marker>;
+
+    fn consume_peeked(&mut self);
+
+    fn peek_byte_n_ahead(&self, pos_ahead: usize) -> Result<u8>;
+
+    fn done(&self) -> bool;
 }
 
-// peek_marker -> Result<Marker>
-// scratch_peeked_marker -> ()
-// consume_bytes -> &'a [u8]
-
-impl<'a> ByteReader<'a> {
-    pub fn new(bytes: &'a [u8]) -> Self {
+impl<'a> Unpacker<'a> for ByteReader<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
         Self {
             bytes,
             index: 0,
             peeked: 0,
+            virtual_value: None,
+            virtual_marker: None,
         }
     }
 
-    pub fn consume_bytes(&mut self, len: usize) -> Result<&'a [u8]> {
+    fn set_virtual(&mut self, marker: Marker, bytes: Option<&'static [u8]>) {
+        self.virtual_marker.replace(marker);
+        if bytes.is_some() {
+            self.virtual_value.replace(bytes.unwrap());
+        }
+    }
+
+    fn get_virtual_marker(&mut self) -> Option<Marker> {
+        self.virtual_marker.take()
+    }
+
+    fn get_virtual_value(&mut self) -> Option<&'static [u8]> {
+        self.virtual_value.take()
+    }
+
+    fn clear_virtual(&mut self) {
+        self.virtual_marker = None;
+        self.virtual_value = None;
+    }
+
+    fn consume_bytes(&mut self, len: usize) -> Result<&'a [u8]> {
         if self.index + len > self.bytes.len() {
             return Err(Error::from_code(ErrorCode::UnexpectedEndOfBytes));
         }
+
         let bytes = &self.bytes[self.index..self.index + len];
         self.index += len;
+
         Ok(bytes)
     }
 
-    pub fn scratch_peeked(&mut self) {
+    fn consume_peeked(&mut self) {
         self.index += self.peeked;
         self.peeked = 0;
     }
 
-    pub fn peek_marker(&mut self) -> Result<Marker> {
-        let marker_byte = *self.get_byte(0)?;
+    fn peek_byte_n_ahead(&self, ahead: usize) -> Result<u8> {
+        self.bytes
+            .get(self.index + ahead)
+            .map(|byte| *byte)
+            .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))
+    }
+
+    fn peek_marker(&mut self) -> Result<Marker> {
+        let marker_byte = self.peek_byte_n_ahead(0)?;
 
         let marker = match marker_byte {
-            // String
             TINY_STRING..=TINY_STRING_MAX => {
                 self.peeked = 1;
                 Marker::String((marker_byte - TINY_STRING) as usize)
             }
             STRING_8 => {
-                let len = *self.get_byte(1)? as usize;
+                let len = self.peek_byte_n_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::String(len)
             }
             STRING_16 => {
-                let b8 = *self.get_byte(2)?;
+                let b8 = self.peek_byte_n_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::String(bytes_to_usize!(b7, b8))
             }
             STRING_32 => {
-                let b8 = *self.get_byte(4)?;
+                let b8 = self.peek_byte_n_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -85,19 +126,19 @@ impl<'a> ByteReader<'a> {
                 Marker::Map((marker_byte - TINY_MAP) as usize)
             }
             MAP_8 => {
-                let len = *self.get_byte(1)? as usize;
+                let len = self.peek_byte_n_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::Map(len)
             }
             MAP_16 => {
-                let b8 = *self.get_byte(self.index + 2)?;
+                let b8 = self.peek_byte_n_ahead(self.index + 2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::Map(bytes_to_usize!(b7, b8))
             }
             MAP_32 => {
-                let b8 = *self.get_byte(4)?;
+                let b8 = self.peek_byte_n_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -116,12 +157,12 @@ impl<'a> ByteReader<'a> {
                 Marker::Struct((marker_byte - TINY_STRUCT) as usize)
             }
             STRUCT_8 => {
-                let len = *self.get_byte(1)? as usize;
+                let len = self.peek_byte_n_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::Struct(len)
             }
             STRUCT_16 => {
-                let b8 = *self.get_byte(2)?;
+                let b8 = self.peek_byte_n_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
@@ -134,19 +175,19 @@ impl<'a> ByteReader<'a> {
                 Marker::List((marker_byte - TINY_LIST) as usize)
             }
             LIST_8 => {
-                let len = *self.get_byte(1)? as usize;
+                let len = self.peek_byte_n_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::List(len)
             }
             LIST_16 => {
-                let b8 = *self.get_byte(2)?;
+                let b8 = self.peek_byte_n_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::List(bytes_to_usize!(b7, b8))
             }
             LIST_32 => {
-                let b8 = *self.get_byte(4)?;
+                let b8 = self.peek_byte_n_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -173,12 +214,12 @@ impl<'a> ByteReader<'a> {
             }
 
             INT_8 => {
-                let b1 = *self.get_byte(1)?;
+                let b1 = self.peek_byte_n_ahead(1)?;
                 self.peeked = 2;
                 Marker::I64(i64::from(i8::from_be_bytes([b1])))
             }
             INT_16 => {
-                let b2 = *self.get_byte(2)?;
+                let b2 = self.peek_byte_n_ahead(2)?;
                 let b1 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
@@ -186,7 +227,7 @@ impl<'a> ByteReader<'a> {
                 Marker::I64(i64::from(n))
             }
             INT_32 => {
-                let b4 = *self.get_byte(4)?;
+                let b4 = self.peek_byte_n_ahead(4)?;
                 let b3 = self.bytes[self.index + 3];
                 let b2 = self.bytes[self.index + 2];
                 let b1 = self.bytes[self.index + 1];
@@ -196,7 +237,7 @@ impl<'a> ByteReader<'a> {
                 Marker::I64(i64::from(n))
             }
             INT_64 => {
-                let b8 = *self.get_byte(8)?;
+                let b8 = self.peek_byte_n_ahead(8)?;
                 let b7 = self.bytes[self.index + 7];
                 let b6 = self.bytes[self.index + 6];
                 let b5 = self.bytes[self.index + 5];
@@ -209,7 +250,7 @@ impl<'a> ByteReader<'a> {
                 Marker::I64(i64::from_be_bytes([b1, b2, b3, b4, b5, b6, b7, b8]))
             }
             FLOAT_64 => {
-                let b8 = *self.get_byte(8)?;
+                let b8 = self.peek_byte_n_ahead(8)?;
                 let b7 = self.bytes[self.index + 7];
                 let b6 = self.bytes[self.index + 6];
                 let b5 = self.bytes[self.index + 5];
@@ -229,19 +270,19 @@ impl<'a> ByteReader<'a> {
             }
 
             BYTES_8 => {
-                let len = *self.get_byte(1)? as usize;
+                let len = self.peek_byte_n_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::Bytes(len)
             }
             BYTES_16 => {
-                let b8 = *self.get_byte(2)?;
+                let b8 = self.peek_byte_n_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::Bytes(bytes_to_usize!(b7, b8))
             }
             BYTES_32 => {
-                let b8 = *self.get_byte(4)?;
+                let b8 = self.peek_byte_n_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -261,13 +302,21 @@ impl<'a> ByteReader<'a> {
         Ok(marker)
     }
 
-    fn get_byte(&self, ahead: usize) -> Result<&u8> {
-        self.bytes
-            .get(self.index + ahead)
-            .ok_or_else(|| Error::from_code(ErrorCode::UnexpectedEndOfBytes))
+    fn done(&self) -> bool {
+        self.bytes.len() == self.index
     }
 }
 
+#[derive(Debug)]
+pub struct ByteReader<'a> {
+    pub bytes: &'a [u8],
+    pub index: usize,
+    pub peeked: usize,
+    pub virtual_value: Option<&'static [u8]>,
+    pub virtual_marker: Option<Marker>,
+}
+
+// TODO: Unit tests should test only methods of the Structures
 #[cfg(test)]
 mod tests {
     use super::*;
