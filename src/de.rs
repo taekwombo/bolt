@@ -620,14 +620,14 @@ where
             StructureAccessState::Signature => {
                 self.de
                     .read
-                    .set_virtual(Marker::String(0), Some(STRUCTURE_SIG_KEY_B));
+                    .set_virtual(Marker::String(0), Some(STRUCTURE_SIG_KEY_B))?;
                 let key = seed.deserialize(&mut *self.de)?;
                 Ok(Some(key))
             }
             StructureAccessState::Fields => {
                 self.de
                     .read
-                    .set_virtual(Marker::String(0), Some(STRUCTURE_FIELDS_KEY_B));
+                    .set_virtual(Marker::String(0), Some(STRUCTURE_FIELDS_KEY_B))?;
                 let key = seed.deserialize(&mut *self.de)?;
                 Ok(Some(key))
             }
@@ -644,12 +644,12 @@ where
                 let bytes = self.de.read.consume_bytes(1)?;
                 let int = i64::from(bytes[0]);
 
-                self.de.read.set_virtual(Marker::I64(int), None);
+                self.de.read.set_virtual(Marker::I64(int), None)?;
                 self.state = StructureAccessState::Fields;
                 Ok(seed.deserialize(&mut *self.de)?)
             }
             StructureAccessState::Fields => {
-                self.de.read.set_virtual(Marker::List(self.size), None);
+                self.de.read.set_virtual(Marker::List(self.size), None)?;
                 self.state = StructureAccessState::Done;
                 Ok(seed.deserialize(&mut *self.de)?)
             }

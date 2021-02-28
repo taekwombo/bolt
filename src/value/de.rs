@@ -1,5 +1,5 @@
 use super::Value;
-use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_SIG_KEY};
+use crate::constants::STRUCTURE_SIG_KEY;
 use serde::de::{self, Error as SerdeError};
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;

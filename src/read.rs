@@ -17,7 +17,7 @@ macro_rules! bytes_to_usize {
 pub trait Unpacker<'a> {
     fn new(bytes: &'a [u8]) -> Self;
 
-    fn set_virtual(&mut self, marker: Marker, bytes: Option<&'static [u8]>);
+    fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> Result<()>;
 
     fn get_virtual_marker(&mut self) -> Option<Marker>;
 
@@ -47,11 +47,15 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         }
     }
 
-    fn set_virtual(&mut self, marker: Marker, bytes: Option<&'static [u8]>) {
-        self.virtual_marker.replace(marker);
-        if bytes.is_some() {
-            self.virtual_value.replace(bytes.unwrap());
+    fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> Result<()> {
+        if self.virtual_marker.is_some() || self.virtual_value.is_some() {
+            return Err(Error::from_code(ErrorCode::UnexpectedExistingVirtualValue));
         }
+
+        self.virtual_marker.replace(marker);
+        self.virtual_value = value;
+
+        Ok(())
     }
 
     fn get_virtual_marker(&mut self) -> Option<Marker> {
@@ -316,7 +320,6 @@ pub struct ByteReader<'a> {
     pub virtual_marker: Option<Marker>,
 }
 
-// TODO: Unit tests should test only methods of the Structures
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -325,6 +328,15 @@ mod tests {
         ($($bytes:expr => $marker:expr),* $(,)*) => {
             $(assert_eq!($marker, ByteReader::new(&$bytes).peek_marker().unwrap());)*
         };
+    }
+
+    #[test]
+    fn test_set_virtual() {
+        let mut reader = ByteReader::new(&[TINY_STRING]);
+        assert!(reader.set_virtual(Marker::I64(0), Some(&[10])).is_ok());
+        assert!(reader.get_virtual_marker().is_some());
+        assert!(reader.get_virtual_marker().is_none());
+        assert!(reader.set_virtual(Marker::Null, None).is_err());
     }
 
     #[test]

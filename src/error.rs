@@ -73,6 +73,7 @@ pub(crate) enum ErrorCode {
     UnexpectedEndOfBytes,
     UnexpectedEmptyPeekedMarker,
     UnexpectedTrailingBytes,
+    UnexpectedExistingVirtualValue,
 }
 
 impl fmt::Display for ErrorCode {
@@ -100,6 +101,7 @@ impl fmt::Display for ErrorCode {
             }
             Self::UnexpectedTrailingBytes => write!(f, "Unexpected trailing bytes left."),
             Self::UnexpectedEOSMarker => write!(f, "Unexpected End Of Stream marker."),
+            Self::UnexpectedExistingVirtualValue => write!(f, "Unexpected existing Virtual value"),
         }
     }
 }
