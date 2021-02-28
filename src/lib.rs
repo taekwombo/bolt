@@ -5,7 +5,7 @@
 #[macro_use]
 mod macros;
 
-mod constants;
+pub mod constants;
 mod de;
 mod error;
 mod marker;
@@ -15,4 +15,4 @@ mod value;
 
 pub use de::from_bytes;
 pub use ser::to_bytes;
-pub use value::Value;
+pub use value::{from_value, Value};
