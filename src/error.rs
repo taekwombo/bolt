@@ -1,7 +1,7 @@
 use serde::{de, ser};
 use std::fmt;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type SerdeResult<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub struct Error {
@@ -9,15 +9,15 @@ pub struct Error {
 }
 
 impl Error {
-    pub(crate) fn make(msg: impl Into<ErrorCode>) -> Self {
+    pub(crate) fn create(msg: impl Into<ErrorCode>) -> Self {
         Self {
             err: Box::new(msg.into()),
         }
     }
 
-    pub(crate) fn from_code(code: ErrorCode) -> Self {
+    pub(crate) fn impl_err(msg: impl Into<Box<str>>) -> Self {
         Self {
-            err: Box::new(code),
+            err: Box::new(ErrorCode::ImplementationError(msg.into())),
         }
     }
 }
@@ -30,13 +30,13 @@ impl fmt::Display for Error {
 
 impl ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Self::make(msg.to_string())
+        Self::create(msg.to_string())
     }
 }
 
 impl de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Self::make(msg.to_string())
+        Self::create(msg.to_string())
     }
 
     fn invalid_type(unexp: de::Unexpected, exp: &dyn de::Expected) -> Self {
@@ -57,10 +57,8 @@ impl std::error::Error for Error {
 #[derive(Debug)]
 pub(crate) enum ErrorCode {
     Message(Box<str>),
-    ExpectedMarkerByte,   // IMPLEMENTATION ERROR. Not a byte that is a marker
-    ExpectedSizeMarker,   // IMPLEMENTATION ERROR. Marker that stores size
-    MarkerSizeOutOfRange, // IMPLEMENTATION ERROR. Size overflowed?
-    U64OutOfRangeForI64,
+    ImplementationError(Box<str>),
+    ExpectedSizeMarker,
     ExpectedString1Marker,
     ExpectedStringMarker,
     ExpectedIntMarker,
@@ -71,22 +69,21 @@ pub(crate) enum ErrorCode {
     ExpectedListMarker,
     UnexpectedEOSMarker,
     UnexpectedEndOfBytes,
-    UnexpectedEmptyPeekedMarker,
     UnexpectedTrailingBytes,
-    UnexpectedExistingVirtualValue,
+    VirtualIllegalAssignment,
+    VirutalExpectedIntMarker,
 }
 
 impl fmt::Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Message(b_str) => write!(f, "{}", b_str),
-            Self::ExpectedSizeMarker => write!(f, "Expected size."),
-            Self::ExpectedMarkerByte => write!(f, "Attempt to convert arbitrary u8 into Marker."),
-            Self::MarkerSizeOutOfRange => write!(
+            Self::ImplementationError(b_str) => write!(
                 f,
-                "Attempt to create Marker with size higher than maximum allowed value."
+                "{}\n. This is an implementation error, submit issue at: <address>",
+                b_str
             ),
-            Self::U64OutOfRangeForI64 => write!(f, "Attempt to convert u64 to i64"),
+            Self::ExpectedSizeMarker => write!(f, "Expected size."),
             Self::ExpectedString1Marker => write!(f, "Expected String(1) Marker."),
             Self::ExpectedStringMarker => write!(f, "Expected String Marker."),
             Self::ExpectedIntMarker => write!(f, "Expected String Marker."),
@@ -96,12 +93,15 @@ impl fmt::Display for ErrorCode {
             Self::UnexpectedType => write!(f, "Unexpected Type."),
             Self::ExpectedListMarker => write!(f, "Expected List Marker."),
             Self::UnexpectedEndOfBytes => write!(f, "Unexpected end of bytes."),
-            Self::UnexpectedEmptyPeekedMarker => {
-                write!(f, "Unexpected None instead of peeked marker.")
+            Self::UnexpectedTrailingBytes => {
+                write!(f, "Unexpected trailing bytes left in the input.")
             }
-            Self::UnexpectedTrailingBytes => write!(f, "Unexpected trailing bytes left."),
             Self::UnexpectedEOSMarker => write!(f, "Unexpected End Of Stream marker."),
-            Self::UnexpectedExistingVirtualValue => write!(f, "Unexpected existing Virtual value"),
+            Self::VirtualIllegalAssignment => write!(
+                f,
+                "Virtual marker and value must be consumed before setting new one."
+            ),
+            Self::VirutalExpectedIntMarker => write!(f, "Virtual"),
         }
     }
 }
@@ -120,11 +120,12 @@ impl From<&str> for ErrorCode {
 
 impl From<std::str::Utf8Error> for Error {
     fn from(m: std::str::Utf8Error) -> Self {
-        Self::make(m.to_string())
+        Self::create(m.to_string())
     }
 }
+
 impl From<std::string::FromUtf8Error> for Error {
     fn from(m: std::string::FromUtf8Error) -> Self {
-        Self::make(m.to_string())
+        Self::create(m.to_string())
     }
 }
