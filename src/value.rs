@@ -1,5 +1,6 @@
 mod de;
 mod ser;
+pub use de::from_value;
 
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;
@@ -14,7 +15,7 @@ pub enum Value {
     String(String),
     List(Vec<Value>),
     Map(HashMap<String, Value>),
-    Bytes(ByteBuf), // TODO: Revisit Bytes - use Bytes instead of ByteBuf
+    Bytes(ByteBuf),
     Structure { signature: u8, fields: Vec<Value> },
 }
 
@@ -51,6 +52,14 @@ mod tests {
     use crate::constants::marker::*;
     use crate::*;
 
+    fn buf(capacity: usize) -> ByteBuf {
+        ByteBuf::with_capacity(capacity)
+    }
+
+    fn structure () -> Value {
+        Value::Structure { signature: 100, fields: vec![] }
+    }
+
     #[test]
     fn value_serde() {
         assert_ser_de! {
@@ -76,29 +85,60 @@ mod tests {
         };
 
         assert_ser! {
-           Value::Null => [NULL],
-           Value::Bool(true) => [TRUE],
-           Value::Bool(false) => [FALSE],
-           Value::List(vec![]) => [TINY_LIST],
-           Value::Map(HashMap::new()) => [TINY_MAP],
-           Value::String(String::from("")) => [TINY_STRING],
-           Value::I64(0i64) => [0],
-           Value::F64(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
-           Value::Bytes(ByteBuf::new()) => [BYTES_8, 0],
-           Value::Structure { signature: 0, fields: vec![] } => [TINY_STRUCT, 0],
+            ok {
+                Value::Null => [NULL],
+                Value::Bool(true) => [TRUE],
+                Value::Bool(false) => [FALSE],
+                Value::List(vec![]) => [TINY_LIST],
+                Value::Map(HashMap::new()) => [TINY_MAP],
+                Value::String(String::from("")) => [TINY_STRING],
+                Value::I64(0i64) => [0],
+                Value::F64(0.0) => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
+                Value::Bytes(ByteBuf::new()) => [BYTES_8, 0],
+                Value::Structure { signature: 0, fields: vec![] } => [TINY_STRUCT, 0],
+            }
+            err {}
         };
-
-        let mut buffer = ByteBuf::with_capacity(1);
-        buffer.push(1);
 
         assert_de! {
-            [NULL] => Value: Value::Null,
-            [127] => Value: Value::I64(127),
-            [TINY_STRING + 1, 49] => Value: Value::String(String::from("1")),
-            [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0] => Value: Value::F64(0.0),
-            [TINY_LIST + 3, 0, 1, 0] => Value: Value::List(vec![Value::I64(0), Value::I64(1), Value::I64(0)]),
-            [TINY_MAP] => Value: Value::Map(HashMap::new()),
-            [BYTES_8, 1, 1] => Value: Value::Bytes(buffer),
+            ok with from_bytes into Value {
+                &[NULL] => Value::Null,
+                &[127] => Value::I64(127),
+                &[TINY_STRING + 1, 49] => Value::String(String::from("1")),
+                &[FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0] => Value::F64(0.0),
+                &[TINY_LIST + 3, 0, 1, 0] =>  Value::List(vec![Value::I64(0), Value::I64(1), Value::I64(0)]),
+                &[TINY_MAP] =>  Value::Map(HashMap::new()),
+                &[BYTES_8, 1, 1] =>  Value::Bytes({ let mut b = buf(1); b.push(1); b }),
+            }
+            ok with from_value into String {
+                Value::String(String::new()) => String::new(),
+                Value::String("123".to_owned()) => "123".to_owned(),
+            }
         };
+    }
+
+    #[test]
+    fn structure_into_map() {
+         macro_rules! map {
+            ($($key:literal => $value:expr),* $(,)*) => {
+               {
+                  let mut map = std::collections::HashMap::new();
+                  $(map.insert(String::from($key), $value);)*
+                  map
+               }
+            }
+         }
+
+        #[derive(Debug, serde_derive::Serialize, serde_derive::Deserialize)]
+        struct S {
+            signature: u8,
+            fields: Vec<Value>
+        }
+
+        let m: S = crate::from_value(structure()).unwrap();
+        println!("{:?}", m);
+
+        let m: HashMap<String, Value> = crate::from_value(Value::Map(map!{})).unwrap();
+        println!("{:?}", m);
     }
 }

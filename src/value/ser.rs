@@ -26,8 +26,9 @@ impl ser::Serialize for Value {
             }
             Self::Bytes(v) => serializer.serialize_bytes(&*v),
             Self::Structure { signature, fields } => {
-                let mut tuple = serializer.serialize_tuple_struct(STRUCTURE_NAME, fields.len())?;
-                tuple.serialize_field(signature)?;
+                let f_len = fields.len();
+                let len: usize = ((*signature as usize) << 56) + f_len;
+                let mut tuple = serializer.serialize_tuple_struct(STRUCTURE_NAME, len)?;
                 for elem in fields.iter() {
                     tuple.serialize_field(elem)?;
                 }

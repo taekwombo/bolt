@@ -1,17 +1,32 @@
 use super::constants::{STRUCTURE_FIELDS_KEY_B, STRUCTURE_SIG_KEY_B};
-use super::error::{Error, ErrorCode, Result};
+use super::error::{Error, ErrorCode, SerdeResult};
 use super::marker::Marker;
 use super::read::{ByteReader, Unpacker};
-use serde::{de, Deserialize};
+use serde::de;
 
-pub fn from_bytes<'de, T>(bytes: &'de [u8]) -> Result<T>
+pub fn from_bytes<'de, T>(bytes: &'de [u8]) -> SerdeResult<T>
 where
-    T: Deserialize<'de>,
+    T: de::Deserialize<'de>,
 {
     let mut de: Deserializer<ByteReader> = Deserializer::new(bytes);
     let value = de::Deserialize::deserialize(&mut de)?;
     de.has_finished()?;
     Ok(value)
+}
+
+mod errors {
+    use super::{Error, Marker};
+
+    pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> Error {
+        Error::create(format!("Expected {}, got {} instead.", expected, actual))
+    }
+
+    pub(super) fn unexpected_virtual_marker(expected: &str, actual: &Marker) -> Error {
+        Error::impl_err(format!(
+            "Expected virtual marker to be {}, got {} instead.",
+            expected, actual
+        ))
+    }
 }
 
 #[derive(Debug)]
@@ -29,20 +44,15 @@ where
         }
     }
 
-    fn has_finished(&self) -> Result<()> {
+    fn has_finished(&self) -> SerdeResult<()> {
         if self.read.done() {
             Ok(())
         } else {
-            Err(Error::from_code(ErrorCode::UnexpectedTrailingBytes))
+            Err(Error::create(ErrorCode::UnexpectedTrailingBytes))
         }
     }
-}
 
-impl<'de, U> Deserializer<U>
-where
-    U: Unpacker<'de>,
-{
-    fn parse_bool(&mut self) -> Result<bool> {
+    fn parse_bool(&mut self) -> SerdeResult<bool> {
         let marker = self.read.peek_marker()?;
         match marker {
             Marker::True => {
@@ -53,23 +63,27 @@ where
                 self.read.consume_peeked();
                 Ok(false)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedBoolMarker)),
+            _ => Err(errors::unexpected_marker("Marker::Boolean", &marker)),
         }
     }
 
-    fn parse_int<T>(&mut self) -> Result<T>
+    fn parse_int<T>(&mut self) -> SerdeResult<T>
     where
         T: std::convert::TryFrom<i64>,
         <T as std::convert::TryFrom<i64>>::Error: std::error::Error + 'static,
     {
-        let v_marker = self.read.get_virtual_marker();
-        if let Some(marker) = v_marker {
-            return match marker {
+        if self.read.has_virtual_marker() {
+            return match self
+                .read
+                .get_virtual_marker()
+                .expect("Virtual Marker to exist")
+            {
                 Marker::I64(int) => {
                     self.read.clear_virtual();
-                    Ok(T::try_from(int).map_err(|e| Error::make(e.to_string()))?)
+                    Ok(T::try_from(int).map_err(|e| Error::create(e.to_string()))?)
+                    // TODO: consider implementing From<TryIntError> into Error
                 }
-                _ => Err(Error::from_code(ErrorCode::ExpectedIntMarker)),
+                m => Err(errors::unexpected_virtual_marker("Marker::I64", &m)),
             };
         }
 
@@ -79,39 +93,47 @@ where
                 if int.is_ok() {
                     self.read.consume_peeked();
                 }
-                int.map_err(|e| Error::make(e.to_string()))
+                int.map_err(|e| Error::create(e.to_string()))
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedIntMarker)),
+            m => Err(errors::unexpected_marker("Marker::I64", &m)),
         }
     }
 
-    fn parse_f64(&mut self) -> Result<f64> {
+    fn parse_f64(&mut self) -> SerdeResult<f64> {
         match self.read.peek_marker()? {
             Marker::F64(num) => {
                 self.read.consume_peeked();
                 Ok(num)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedFloatMarker)),
+            m => Err(errors::unexpected_marker("Marker::F64", &m)),
         }
     }
 
-    fn parse_char(&mut self) -> Result<char> {
+    fn parse_char(&mut self) -> SerdeResult<char> {
         match self.read.peek_marker()? {
             Marker::String(len) if len == 1 => {
                 self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(1)?;
                 Ok(bytes[0] as char)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedString1Marker)),
+            m => Err(errors::unexpected_marker("Marker::String(1)", &m)),
         }
     }
 
-    fn parse_str(&mut self) -> Result<&'de str> {
-        let v_marker = self.read.get_virtual_marker();
-        if let Some(marker) = v_marker {
-            let s = self.read.get_virtual_value().expect("Value to exist");
-            self.read.clear_virtual();
-            return Ok(std::str::from_utf8(s)?);
+    fn parse_str(&mut self) -> SerdeResult<&'de str> {
+        if self.read.has_virtual_marker() {
+            return match self
+                .read
+                .get_virtual_marker()
+                .expect("Virtual Marker to exist")
+            {
+                Marker::String(_) => {
+                    let s = self.read.get_virtual_value().expect("Value to exist");
+                    self.read.clear_virtual();
+                    Ok(std::str::from_utf8(s)?)
+                }
+                m => Err(errors::unexpected_virtual_marker("Marker::String", &m)),
+            };
         }
 
         match self.read.peek_marker()? {
@@ -120,51 +142,54 @@ where
                 let bytes = self.read.consume_bytes(len)?;
                 Ok(std::str::from_utf8(bytes)?)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedStringMarker)),
+            m => Err(errors::unexpected_marker("Marker::String", &m)),
         }
     }
 
-    fn parse_string(&mut self) -> Result<String> {
+    fn parse_string(&mut self) -> SerdeResult<String> {
         match self.read.peek_marker()? {
             Marker::String(len) => {
                 self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(len)?.to_vec();
                 Ok(String::from_utf8(bytes)?)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedStringMarker)),
+            m => Err(errors::unexpected_marker("Marker::String", &m)),
         }
     }
 
-    fn parse_bytes(&mut self) -> Result<&'de [u8]> {
+    fn parse_bytes(&mut self) -> SerdeResult<&'de [u8]> {
         match self.read.peek_marker()? {
             Marker::Bytes(len) => {
                 self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(len)?;
                 Ok(bytes)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedStringMarker)),
+            m => Err(errors::unexpected_marker("Marker::Bytes", &m)),
         }
     }
 
-    fn parse_null(&mut self) -> Result<bool> {
+    fn parse_null(&mut self) -> SerdeResult<()> {
         match self.read.peek_marker()? {
             Marker::Null => {
                 self.read.consume_peeked();
-                Ok(true)
+                Ok(())
             }
-            _ => Ok(false),
+            m => Err(errors::unexpected_marker("Marker::Null", &m)),
         }
     }
 
-    fn parse_list(&mut self) -> Result<usize> {
-        let v_marker = self.read.get_virtual_marker();
-        if let Some(marker) = v_marker {
-            return match marker {
+    fn parse_list(&mut self) -> SerdeResult<usize> {
+        if self.read.has_virtual_marker() {
+            return match self
+                .read
+                .get_virtual_marker()
+                .expect("Virtual Marker to exist")
+            {
                 Marker::List(len) => {
                     self.read.clear_virtual();
                     Ok(len)
                 }
-                _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
+                m => Err(errors::unexpected_virtual_marker("Marker::List", &m)),
             };
         }
 
@@ -173,46 +198,40 @@ where
                 self.read.consume_peeked();
                 Ok(size)
             }
-            Marker::Struct(size) => {
-                self.read.consume_peeked();
-                Ok(size + 1)
-            }
-            _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
+            m => Err(errors::unexpected_marker("Marker::List", &m)),
         }
     }
 
-    fn parse_map(&mut self) -> Result<usize> {
+    fn parse_map(&mut self) -> SerdeResult<usize> {
         match self.read.peek_marker()? {
             Marker::Map(size) => {
                 self.read.consume_peeked();
                 Ok(size)
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
+            m => Err(errors::unexpected_marker("Marker::Map", &m)),
         }
     }
 
-    fn parse_enum(&mut self) -> Result<()> {
+    fn parse_enum(&mut self) -> SerdeResult<()> {
         match self.read.peek_marker()? {
             Marker::Map(len) if len == 1 => {
                 self.read.consume_peeked();
                 Ok(())
             }
-            _ => Err(Error::from_code(ErrorCode::ExpectedListMarker)),
+            m => Err(errors::unexpected_marker("Marker::Map", &m)),
         }
     }
 
     fn try_end_stream(&mut self) -> bool {
-        let marker = self.read.peek_marker();
-        if let Ok(marker) = marker {
-            match marker {
+        match self.read.peek_marker() {
+            Err(_) => false,
+            Ok(marker) => match marker {
                 Marker::EOS => {
                     self.read.consume_peeked();
                     true
                 }
                 _ => false,
-            }
-        } else {
-            false
+            },
         }
     }
 }
@@ -223,7 +242,7 @@ where
 {
     type Error = Error;
 
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -237,159 +256,156 @@ where
             Marker::I64(_) => self.deserialize_i64(visitor),
             Marker::F64(_) => self.deserialize_f64(visitor),
             Marker::Struct(_) => self.deserialize_map(visitor),
-            Marker::EOS => Err(Error::from_code(ErrorCode::UnexpectedEOSMarker)),
+            m @ Marker::EOS => Err(errors::unexpected_marker("not Marker::EOS", &m)),
         }
     }
 
-    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_bool<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_bool(self.parse_bool()?)
     }
 
-    fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_i8<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i8(self.parse_int()?)
     }
 
-    fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_i16<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i16(self.parse_int()?)
     }
 
-    fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_i32<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i32(self.parse_int()?)
     }
 
-    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_i64<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i64(self.parse_int()?)
     }
 
-    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_u8<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u8(self.parse_int()?)
     }
 
-    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_u16<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u16(self.parse_int()?)
     }
 
-    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_u32<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u32(self.parse_int()?)
     }
 
-    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_u64<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u64(self.parse_int()?)
     }
 
-    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_f32<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_f32(self.parse_f64()? as f32)
     }
 
-    fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_f64<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_f64(self.parse_f64()?)
     }
 
-    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_char<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_char(self.parse_char()?)
     }
 
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_str<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_borrowed_str(self.parse_str()?)
     }
 
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_string<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_string(self.parse_string()?)
     }
 
-    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_bytes<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_borrowed_bytes(self.parse_bytes()?)
     }
 
-    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_byte_buf<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_byte_buf(self.parse_bytes()?.to_owned())
     }
 
-    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        if self.parse_null()? {
+        if self.parse_null().is_ok() {
             visitor.visit_none()
         } else {
             visitor.visit_some(self)
         }
     }
 
-    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_unit<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        if self.parse_null()? {
-            visitor.visit_unit()
-        } else {
-            Err(Error::from_code(ErrorCode::UnexpectedType))
-        }
+        self.parse_null()?;
+        visitor.visit_unit()
     }
 
-    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_unit(visitor)
     }
 
-    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
 
-    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_seq<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -397,21 +413,26 @@ where
         visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
-    fn deserialize_tuple<V>(self, _size: usize, visitor: V) -> Result<V::Value>
+    fn deserialize_tuple<V>(self, _size: usize, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_seq(visitor)
     }
 
-    fn deserialize_tuple_struct<V>(self, _name: &str, _size: usize, visitor: V) -> Result<V::Value>
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &str,
+        _size: usize,
+        visitor: V,
+    ) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_seq(visitor)
     }
 
-    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_map<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -436,7 +457,7 @@ where
         _name: &str,
         _fields: &'static [&'static str],
         visitor: V,
-    ) -> Result<V::Value>
+    ) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -452,7 +473,7 @@ where
         _name: &str,
         _variants: &'static [&'static str],
         visitor: V,
-    ) -> Result<V::Value>
+    ) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -460,14 +481,14 @@ where
         visitor.visit_enum(VariantAccess { de: self })
     }
 
-    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_identifier<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_str(visitor)
     }
 
-    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -495,7 +516,7 @@ where
 {
     type Error = Error;
 
-    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+    fn next_element_seed<T>(&mut self, seed: T) -> SerdeResult<Option<T::Value>>
     where
         T: de::DeserializeSeed<'de>,
     {
@@ -520,7 +541,7 @@ where
 {
     type Error = Error;
 
-    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
     where
         K: de::DeserializeSeed<'de>,
     {
@@ -533,7 +554,7 @@ where
         Ok(Some(val))
     }
 
-    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    fn next_value_seed<V>(&mut self, seed: V) -> SerdeResult<V::Value>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -552,7 +573,7 @@ where
     type Error = Error;
     type Variant = Self;
 
-    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
+    fn variant_seed<V>(self, seed: V) -> SerdeResult<(V::Value, Self)>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -567,25 +588,25 @@ where
 {
     type Error = Error;
 
-    fn unit_variant(self) -> Result<()> {
+    fn unit_variant(self) -> SerdeResult<()> {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
+    fn newtype_variant_seed<T>(self, seed: T) -> SerdeResult<T::Value>
     where
         T: de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.de)
     }
 
-    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         de::Deserializer::deserialize_seq(self.de, visitor)
     }
 
-    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> Result<V::Value>
+    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -612,7 +633,7 @@ where
 {
     type Error = Error;
 
-    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
     where
         K: de::DeserializeSeed<'de>,
     {
@@ -635,7 +656,7 @@ where
         }
     }
 
-    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    fn next_value_seed<V>(&mut self, seed: V) -> SerdeResult<V::Value>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -653,7 +674,9 @@ where
                 self.state = StructureAccessState::Done;
                 Ok(seed.deserialize(&mut *self.de)?)
             }
-            StructureAccessState::Done => Err(Error::make("Noe more values")),
+            StructureAccessState::Done => Err(Error::impl_err(
+                "StructureAccess value_seed cannot reach State::Done.",
+            )),
         }
     }
 }

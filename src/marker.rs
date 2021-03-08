@@ -1,5 +1,5 @@
 use super::constants::marker::*;
-use super::error::{Error, ErrorCode, Result};
+use super::error::{Error, SerdeResult};
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -39,26 +39,35 @@ pub enum Marker {
 }
 
 impl Marker {
-    pub(crate) fn inc_size(&mut self, size: usize) -> Result<()> {
+    fn size_exceeded(marker_type: &str, len: usize) -> Error {
+        Error::create(format!("Cannot pack {} with size {}.", marker_type, len))
+    }
+
+    pub(crate) fn inc_size(&mut self, size: usize) -> SerdeResult<()> {
         match self {
             Self::String(len) => *len += size,
             Self::List(len) => *len += size,
             Self::Bytes(len) => *len += size,
             Self::Map(len) => *len += size,
             Self::Struct(len) => *len += size,
-            _ => return Err(Error::from_code(ErrorCode::ExpectedSizeMarker)),
+            marker => {
+                return Err(Error::create(format!(
+                    "Unexpected {}, expected Marker with size.",
+                    marker
+                )))
+            }
         };
         Ok(())
     }
 
-    pub(crate) fn to_vec(&self) -> Result<Vec<u8>> {
+    pub(crate) fn to_vec(&self) -> SerdeResult<Vec<u8>> {
         let bytes_vec = match self {
             Self::String(len) => match len {
                 0x0..=0xF => vec![TINY_STRING + u8::try_from(*len).unwrap()],
                 0x10..=0xFF => vec![STRING_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(STRING_16, i16, *len),
                 0x10000..=0xFFFF_FFFF => to_bytes!(STRING_32, i32, *len),
-                _ => return Err(Error::make("String too long to pack.")),
+                _ => return Err(Marker::size_exceeded("String", *len)),
             },
             Self::I64(int) => match int {
                 -0x10..=0x7F => i8::try_from(*int).unwrap().to_be_bytes().to_vec(),
@@ -78,7 +87,7 @@ impl Marker {
                 0x0..=0xFF => vec![BYTES_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(BYTES_16, u16, *len),
                 0x10000..=0xFFFF_FFFF => to_bytes!(BYTES_32, u32, *len),
-                _ => return Err(Error::make("Bytes too long to pack.")),
+                _ => return Err(Marker::size_exceeded("Bytes", *len)),
             },
             Self::Map(len) => match len {
                 0x0..=0xF => vec![TINY_MAP + u8::try_from(*len).unwrap()],
@@ -91,7 +100,7 @@ impl Marker {
                 0x0..=0xF => vec![TINY_STRUCT + u8::try_from(*len).unwrap()],
                 0x10..=0xFF => vec![STRUCT_8, u8::try_from(*len).unwrap()],
                 0x100..=0xFFFF => to_bytes!(STRUCT_16, u16, *len),
-                _ => return Err(Error::make("Struct too big to pack.")),
+                _ => return Err(Marker::size_exceeded("Struct", *len)),
             },
             Self::Null => vec![NULL],
             Self::True => vec![TRUE],
