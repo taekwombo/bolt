@@ -1,7 +1,4 @@
-// TODO: Should it forbid deserializing uint?
-
 #[cfg(test)]
- 
 #[macro_use]
 mod macros;
 

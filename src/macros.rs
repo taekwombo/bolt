@@ -1,7 +1,3 @@
-pub(crate) fn map_assertion_err(e: crate::error::Error) {
-    eprintln!("{}", e);
-}
-
 #[macro_export]
 macro_rules! bytes {
     ($($slice:expr),* $(,)*) => {
@@ -24,36 +20,47 @@ macro_rules! assert_ser_de {
 
 #[macro_export]
 macro_rules! assert_ser {
-    ($($value:expr => $bytes:expr),* $(,)*) => {
+    (ok $var:ident $bytes:expr) => {
+        if $var.is_err() {
+            eprintln!("{:?}", $var);
+        }
+        assert!($var.is_ok());
+        assert_eq!($var.unwrap(), $bytes);
+    };
+    (err $var:ident $error:expr) => {
+        assert!($var.is_err());
+        assert_eq!($var.unwrap_err(), $error);
+    };
+    ($($ok_err:tt {$($value:expr => $expected:expr),* $(,)*})+) => {
         $(
-            assert_eq!($crate::to_bytes(&$value).map_err($crate::macros::map_assertion_err).unwrap(), $bytes);
-        )*
-    }
-}
-
-#[macro_export]
-macro_rules! assert_ser_err {
-    ($($value:expr),* $(,)*) => {
-        $(
-            assert!($crate::to_bytes(&value).is_err());
-        )*
+            $(
+               let __v = $crate::to_bytes(&$value);
+               assert_ser!($ok_err __v $expected);
+            )*
+        )+
     }
 }
 
 #[macro_export]
 macro_rules! assert_de {
-    ($($bytes:expr => $t:ty: $value:expr),* $(,)*) => {
+    (ok $var:ident $value:expr) => {
+        if $var.is_err() {
+            eprintln!("{:?}", $var);
+        }
+        assert!($var.is_ok());
+        assert_eq!($var.unwrap(), $value);
+    };
+    (err $var:ident $value:expr) => {
+        assert!($var.is_err());
+        assert_eq!($var.unwrap_err(), $value);
+    };
+    ($($ok_err:tt with $method:ident into $t:ty {$($source:expr => $value:expr),* $(,)*})+) => {
         $(
-            assert!($crate::from_bytes::<$t>(&$bytes).map_err($crate::macros::map_assertion_err).unwrap() == $value);
-        )*
-    }
+            $(
+                let __v = $crate::$method::<$t>($source);
+                assert_de!($ok_err __v $value);
+            )*
+        )+
+    };
 }
 
-#[macro_export]
-macro_rules! assert_de_err {
-    ($($value:expr),* $(,)*) => {
-        $(
-            assert!($crate::from_bytes(&$value).is_err());
-        )*
-    }
-}
