@@ -37,7 +37,7 @@ pub trait Unpacker<'a> {
     // Peek marker byte.
     fn peek_marker(&mut self) -> SerdeResult<Marker>;
 
-    fn scratch_peeked (&mut self);
+    fn scratch_peeked(&mut self);
 }
 
 impl<'a> Unpacker<'a> for ByteReader<'a> {
@@ -61,7 +61,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
             return Err(Error::create(ErrorCode::VirtualIllegalAssignment));
         }
 
-        self.virtual_marker = Some(marker); 
+        self.virtual_marker = Some(marker);
         self.virtual_value = value;
 
         Ok(())
@@ -96,13 +96,19 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
 
         self.scratch_peeked();
 
-        return Ok(marker);
+        Ok(marker)
     }
 
     fn peek_marker(&mut self) -> SerdeResult<Marker> {
         if self.virtual_marker.is_some() {
-            assert!(self.peeked == 0, "ByteReader.peeked must be equal to 0 when setting virtual marker");
-            return Ok(self.virtual_marker.clone().expect("Virtual marker to exist"));
+            assert!(
+                self.peeked == 0,
+                "ByteReader.peeked must be equal to 0 when setting virtual marker"
+            );
+            return Ok(self
+                .virtual_marker
+                .clone()
+                .expect("Virtual marker to exist"));
         }
 
         let marker_byte = self.peek_byte_nth_ahead(0)?;
@@ -310,11 +316,10 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         Ok(marker)
     }
 
-    fn scratch_peeked (&mut self) {
+    fn scratch_peeked(&mut self) {
         if self.virtual_marker.is_some() {
             assert!(self.peeked == 0);
             self.virtual_marker = None;
-            
         } else {
             assert!(self.peeked != 0);
             self.index += self.peeked;

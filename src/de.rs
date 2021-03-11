@@ -20,13 +20,6 @@ mod errors {
     pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> Error {
         Error::create(format!("Expected {}, got {} instead.", expected, actual))
     }
-
-    pub(super) fn unexpected_virtual_marker(expected: &str, actual: &Marker) -> Error {
-        Error::impl_err(format!(
-            "Expected virtual marker to be {}, got {} instead.",
-            expected, actual
-        ))
-    }
 }
 
 #[derive(Debug)]
@@ -80,18 +73,14 @@ where
 
     fn parse_char(&mut self) -> SerdeResult<char> {
         match self.read.consume_marker()? {
-            Marker::String(len) if len == 1 => {
-                Ok(self.read.consume_bytes(1)?[0] as char)
-            }
+            Marker::String(len) if len == 1 => Ok(self.read.consume_bytes(1)?[0] as char),
             m => Err(errors::unexpected_marker("Marker::String(1)", &m)),
         }
     }
 
     fn parse_str(&mut self) -> SerdeResult<&'de str> {
         match self.read.consume_marker()? {
-            Marker::String(len) => {
-                Ok(std::str::from_utf8(self.read.consume_bytes(len)?)?)
-            },
+            Marker::String(len) => Ok(std::str::from_utf8(self.read.consume_bytes(len)?)?),
             m => Err(errors::unexpected_marker("Marker::String", &m)),
         }
     }
@@ -108,9 +97,7 @@ where
 
     fn parse_bytes(&mut self) -> SerdeResult<&'de [u8]> {
         match self.read.consume_marker()? {
-            Marker::Bytes(len) => {
-                Ok(self.read.consume_bytes(len)?)
-            }
+            Marker::Bytes(len) => Ok(self.read.consume_bytes(len)?),
             m => Err(errors::unexpected_marker("Marker::Bytes", &m)),
         }
     }
@@ -140,7 +127,10 @@ where
         match self.read.consume_marker()? {
             Marker::Map(size) => Ok((true, size)),
             Marker::Struct(size) => Ok((false, size)),
-            m => Err(errors::unexpected_marker("Marker::Map or Marker::Structure", &m)),
+            m => Err(errors::unexpected_marker(
+                "Marker::Map or Marker::Structure",
+                &m,
+            )),
         }
     }
 
@@ -367,10 +357,13 @@ where
     {
         match self.parse_map_or_struct()? {
             (true, size) => visitor.visit_map(MapAccess {
-                de: self, len: size
+                de: self,
+                len: size,
             }),
             (false, size) => visitor.visit_map(StructureAccess {
-                de: self, size: size, state: StructureAccessState::Signature,
+                de: self,
+                size,
+                state: StructureAccessState::Signature,
             }),
         }
     }
@@ -387,7 +380,7 @@ where
         let map_len = self.parse_map()?;
         visitor.visit_map(MapAccess {
             de: self,
-            len: map_len
+            len: map_len,
         })
     }
 

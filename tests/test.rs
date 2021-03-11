@@ -278,7 +278,7 @@ mod deserialize {
 
     #[test]
     fn skip_unknown() {
-       let map_a = map!{ "key1" => 0, "key2" => 1, "key3" => 2 };
+        let map_a = map! { "key1" => 0, "key2" => 1, "key3" => 2 };
         let bytes = to_bytes(&map_a).unwrap();
         ser(map_a, &bytes);
 

@@ -361,8 +361,9 @@ impl<'de> de::Deserializer<'de> for Value {
                 iter: m.into_iter(),
                 value: None,
             }),
-            Self::Structure { signature, fields } => 
-                visitor.visit_map(StructureDeserializer::new(signature, fields)),
+            Self::Structure { signature, fields } => {
+                visitor.visit_map(StructureDeserializer::new(signature, fields))
+            }
             v => Err(errors::unexpected_type("Value::Map", &v)),
         }
     }

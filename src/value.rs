@@ -56,8 +56,11 @@ mod tests {
         ByteBuf::with_capacity(capacity)
     }
 
-    fn structure () -> Value {
-        Value::Structure { signature: 100, fields: vec![] }
+    fn structure() -> Value {
+        Value::Structure {
+            signature: 100,
+            fields: vec![],
+        }
     }
 
     #[test]
@@ -119,7 +122,7 @@ mod tests {
 
     #[test]
     fn structure_into_map() {
-         macro_rules! map {
+        macro_rules! map {
             ($($key:literal => $value:expr),* $(,)*) => {
                {
                   let mut map = std::collections::HashMap::new();
@@ -132,13 +135,13 @@ mod tests {
         #[derive(Debug, serde_derive::Serialize, serde_derive::Deserialize)]
         struct S {
             signature: u8,
-            fields: Vec<Value>
+            fields: Vec<Value>,
         }
 
         let m: S = crate::from_value(structure()).unwrap();
         println!("{:?}", m);
 
-        let m: HashMap<String, Value> = crate::from_value(Value::Map(map!{})).unwrap();
+        let m: HashMap<String, Value> = crate::from_value(Value::Map(map! {})).unwrap();
         println!("{:?}", m);
     }
 }
