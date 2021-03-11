@@ -1,6 +1,6 @@
 #[cfg(test)]
 #[macro_use]
-mod macros;
+mod test_macros;
 
 pub mod constants;
 mod de;

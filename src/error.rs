@@ -15,7 +15,7 @@ impl Error {
         }
     }
 
-    pub(crate) fn impl_err(msg: impl Into<Box<str>>) -> Self {
+    pub(crate) fn impl_err(msg: impl Into<String>) -> Self {
         Self {
             err: Box::new(ErrorCode::ImplementationError(msg.into())),
         }
@@ -56,8 +56,8 @@ impl std::error::Error for Error {
 
 #[derive(Debug)]
 pub(crate) enum ErrorCode {
-    Message(Box<str>),
-    ImplementationError(Box<str>),
+    Message(String),
+    ImplementationError(String),
     ExpectedSizeMarker,
     ExpectedString1Marker,
     ExpectedStringMarker,
@@ -108,13 +108,13 @@ impl fmt::Display for ErrorCode {
 
 impl From<String> for ErrorCode {
     fn from(s: String) -> Self {
-        Self::Message(s.into_boxed_str())
+        Self::Message(s)
     }
 }
 
 impl From<&str> for ErrorCode {
     fn from(s: &str) -> Self {
-        Self::Message(s.to_owned().into_boxed_str())
+        Self::Message(s.to_owned())
     }
 }
 

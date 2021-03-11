@@ -15,27 +15,29 @@ macro_rules! bytes_to_usize {
 }
 
 pub trait Unpacker<'a> {
+    /// Creates new instance of Unpacker trait object
     fn new(bytes: &'a [u8]) -> Self;
 
+    /// Checks if all bytes were consumed
+    fn is_done(&self) -> bool;
+
+    /// Sets virtual marker and/or value needed for Structure deserialization
     fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> SerdeResult<()>;
 
-    fn get_virtual_marker(&mut self) -> Option<Marker>;
-
-    fn has_virtual_marker(&self) -> bool;
-
-    fn get_virtual_value(&mut self) -> Option<&'static [u8]>;
-
-    fn clear_virtual(&mut self);
-
+    /// Scratches peeked bytes and consumes next N bytes.
+    /// If virtual value was set then the virtual value is returned instead.
     fn consume_bytes(&mut self, len: usize) -> SerdeResult<&'a [u8]>;
 
+    /// Returns Nth byte from current index if it exists
+    fn peek_byte_nth_ahead(&self, pos_ahead: usize) -> SerdeResult<u8>;
+
+    /// Peek and consume marker.
+    fn consume_marker(&mut self) -> SerdeResult<Marker>;
+
+    // Peek marker byte.
     fn peek_marker(&mut self) -> SerdeResult<Marker>;
 
-    fn consume_peeked(&mut self);
-
-    fn peek_byte_n_ahead(&self, pos_ahead: usize) -> SerdeResult<u8>;
-
-    fn done(&self) -> bool;
+    fn scratch_peeked (&mut self);
 }
 
 impl<'a> Unpacker<'a> for ByteReader<'a> {
@@ -49,35 +51,29 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         }
     }
 
+    fn is_done(&self) -> bool {
+        self.bytes.len() == self.index
+    }
+
     fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> SerdeResult<()> {
+        // Ensure that call to .set_virtual never overwrites existing virtual values
         if self.virtual_marker.is_some() || self.virtual_value.is_some() {
             return Err(Error::create(ErrorCode::VirtualIllegalAssignment));
         }
 
-        self.virtual_marker.replace(marker);
+        self.virtual_marker = Some(marker); 
         self.virtual_value = value;
 
         Ok(())
     }
 
-    fn get_virtual_marker(&mut self) -> Option<Marker> {
-        self.virtual_marker.take()
-    }
-
-    fn has_virtual_marker(&self) -> bool {
-        self.virtual_marker.is_some()
-    }
-
-    fn get_virtual_value(&mut self) -> Option<&'static [u8]> {
-        self.virtual_value.take()
-    }
-
-    fn clear_virtual(&mut self) {
-        self.virtual_marker = None;
-        self.virtual_value = None;
-    }
-
+    /// Called only when additional data needs to be consumed after consuming marker.
     fn consume_bytes(&mut self, len: usize) -> SerdeResult<&'a [u8]> {
+        if self.virtual_value.is_some() {
+            assert!(self.virtual_marker.is_none());
+            return Ok(self.virtual_value.take().expect("Virtual Value to exist"));
+        }
+
         if self.index + len > self.bytes.len() {
             return Err(Error::create(ErrorCode::UnexpectedEndOfBytes));
         }
@@ -88,40 +84,47 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         Ok(bytes)
     }
 
-    fn consume_peeked(&mut self) {
-        self.index += self.peeked;
-        self.peeked = 0;
-    }
-
-    fn peek_byte_n_ahead(&self, ahead: usize) -> SerdeResult<u8> {
+    fn peek_byte_nth_ahead(&self, ahead: usize) -> SerdeResult<u8> {
         self.bytes
             .get(self.index + ahead)
             .copied()
             .ok_or_else(|| Error::create(ErrorCode::UnexpectedEndOfBytes))
     }
 
-    fn peek_marker(&mut self) -> SerdeResult<Marker> {
-        let marker_byte = self.peek_byte_n_ahead(0)?;
+    fn consume_marker(&mut self) -> SerdeResult<Marker> {
+        let marker = self.peek_marker()?;
 
+        self.scratch_peeked();
+
+        return Ok(marker);
+    }
+
+    fn peek_marker(&mut self) -> SerdeResult<Marker> {
+        if self.virtual_marker.is_some() {
+            assert!(self.peeked == 0, "ByteReader.peeked must be equal to 0 when setting virtual marker");
+            return Ok(self.virtual_marker.clone().expect("Virtual marker to exist"));
+        }
+
+        let marker_byte = self.peek_byte_nth_ahead(0)?;
         let marker = match marker_byte {
             TINY_STRING..=TINY_STRING_MAX => {
                 self.peeked = 1;
                 Marker::String((marker_byte - TINY_STRING) as usize)
             }
             STRING_8 => {
-                let len = self.peek_byte_n_ahead(1)? as usize;
+                let len = self.peek_byte_nth_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::String(len)
             }
             STRING_16 => {
-                let b8 = self.peek_byte_n_ahead(2)?;
+                let b8 = self.peek_byte_nth_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::String(bytes_to_usize!(b7, b8))
             }
             STRING_32 => {
-                let b8 = self.peek_byte_n_ahead(4)?;
+                let b8 = self.peek_byte_nth_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -134,19 +137,19 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::Map((marker_byte - TINY_MAP) as usize)
             }
             MAP_8 => {
-                let len = self.peek_byte_n_ahead(1)? as usize;
+                let len = self.peek_byte_nth_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::Map(len)
             }
             MAP_16 => {
-                let b8 = self.peek_byte_n_ahead(self.index + 2)?;
+                let b8 = self.peek_byte_nth_ahead(self.index + 2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::Map(bytes_to_usize!(b7, b8))
             }
             MAP_32 => {
-                let b8 = self.peek_byte_n_ahead(4)?;
+                let b8 = self.peek_byte_nth_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -163,12 +166,12 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::Struct((marker_byte - TINY_STRUCT) as usize)
             }
             STRUCT_8 => {
-                let len = self.peek_byte_n_ahead(1)? as usize;
+                let len = self.peek_byte_nth_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::Struct(len)
             }
             STRUCT_16 => {
-                let b8 = self.peek_byte_n_ahead(2)?;
+                let b8 = self.peek_byte_nth_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
@@ -179,19 +182,19 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::List((marker_byte - TINY_LIST) as usize)
             }
             LIST_8 => {
-                let len = self.peek_byte_n_ahead(1)? as usize;
+                let len = self.peek_byte_nth_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::List(len)
             }
             LIST_16 => {
-                let b8 = self.peek_byte_n_ahead(2)?;
+                let b8 = self.peek_byte_nth_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::List(bytes_to_usize!(b7, b8))
             }
             LIST_32 => {
-                let b8 = self.peek_byte_n_ahead(4)?;
+                let b8 = self.peek_byte_nth_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -216,12 +219,12 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::False
             }
             INT_8 => {
-                let b1 = self.peek_byte_n_ahead(1)?;
+                let b1 = self.peek_byte_nth_ahead(1)?;
                 self.peeked = 2;
                 Marker::I64(i64::from(i8::from_be_bytes([b1])))
             }
             INT_16 => {
-                let b2 = self.peek_byte_n_ahead(2)?;
+                let b2 = self.peek_byte_nth_ahead(2)?;
                 let b1 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
@@ -229,7 +232,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::I64(i64::from(n))
             }
             INT_32 => {
-                let b4 = self.peek_byte_n_ahead(4)?;
+                let b4 = self.peek_byte_nth_ahead(4)?;
                 let b3 = self.bytes[self.index + 3];
                 let b2 = self.bytes[self.index + 2];
                 let b1 = self.bytes[self.index + 1];
@@ -239,7 +242,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::I64(i64::from(n))
             }
             INT_64 => {
-                let b8 = self.peek_byte_n_ahead(8)?;
+                let b8 = self.peek_byte_nth_ahead(8)?;
                 let b7 = self.bytes[self.index + 7];
                 let b6 = self.bytes[self.index + 6];
                 let b5 = self.bytes[self.index + 5];
@@ -252,7 +255,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::I64(i64::from_be_bytes([b1, b2, b3, b4, b5, b6, b7, b8]))
             }
             FLOAT_64 => {
-                let b8 = self.peek_byte_n_ahead(8)?;
+                let b8 = self.peek_byte_nth_ahead(8)?;
                 let b7 = self.bytes[self.index + 7];
                 let b6 = self.bytes[self.index + 6];
                 let b5 = self.bytes[self.index + 5];
@@ -270,19 +273,19 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 Marker::EOS
             }
             BYTES_8 => {
-                let len = self.peek_byte_n_ahead(1)? as usize;
+                let len = self.peek_byte_nth_ahead(1)? as usize;
                 self.peeked = 2;
                 Marker::Bytes(len)
             }
             BYTES_16 => {
-                let b8 = self.peek_byte_n_ahead(2)?;
+                let b8 = self.peek_byte_nth_ahead(2)?;
                 let b7 = self.bytes[self.index + 1];
 
                 self.peeked = 3;
                 Marker::Bytes(bytes_to_usize!(b7, b8))
             }
             BYTES_32 => {
-                let b8 = self.peek_byte_n_ahead(4)?;
+                let b8 = self.peek_byte_nth_ahead(4)?;
                 let b7 = self.bytes[self.index + 3];
                 let b6 = self.bytes[self.index + 2];
                 let b5 = self.bytes[self.index + 1];
@@ -307,8 +310,16 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         Ok(marker)
     }
 
-    fn done(&self) -> bool {
-        self.bytes.len() == self.index
+    fn scratch_peeked (&mut self) {
+        if self.virtual_marker.is_some() {
+            assert!(self.peeked == 0);
+            self.virtual_marker = None;
+            
+        } else {
+            assert!(self.peeked != 0);
+            self.index += self.peeked;
+            self.peeked = 0;
+        }
     }
 }
 
@@ -335,8 +346,9 @@ mod tests {
     fn test_set_virtual() {
         let mut reader = ByteReader::new(&[TINY_STRING]);
         assert!(reader.set_virtual(Marker::I64(0), Some(&[10])).is_ok());
-        assert!(reader.get_virtual_marker().is_some());
-        assert!(reader.get_virtual_marker().is_none());
+        assert!(reader.consume_marker().is_ok());
+        assert!(reader.consume_bytes(0).is_ok());
+        assert!(reader.set_virtual(Marker::Null, None).is_ok());
         assert!(reader.set_virtual(Marker::Null, None).is_err());
     }
 

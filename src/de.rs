@@ -10,7 +10,7 @@ where
 {
     let mut de: Deserializer<ByteReader> = Deserializer::new(bytes);
     let value = de::Deserialize::deserialize(&mut de)?;
-    de.has_finished()?;
+    de.is_done()?;
     Ok(value)
 }
 
@@ -44,8 +44,8 @@ where
         }
     }
 
-    fn has_finished(&self) -> SerdeResult<()> {
-        if self.read.done() {
+    fn is_done(&self) -> SerdeResult<()> {
+        if self.read.is_done() {
             Ok(())
         } else {
             Err(Error::create(ErrorCode::UnexpectedTrailingBytes))
@@ -53,17 +53,10 @@ where
     }
 
     fn parse_bool(&mut self) -> SerdeResult<bool> {
-        let marker = self.read.peek_marker()?;
-        match marker {
-            Marker::True => {
-                self.read.consume_peeked();
-                Ok(true)
-            }
-            Marker::False => {
-                self.read.consume_peeked();
-                Ok(false)
-            }
-            _ => Err(errors::unexpected_marker("Marker::Boolean", &marker)),
+        match self.read.consume_marker()? {
+            Marker::True => Ok(true),
+            Marker::False => Ok(false),
+            m => Err(errors::unexpected_marker("Marker::Boolean", &m)),
         }
     }
 
@@ -72,84 +65,40 @@ where
         T: std::convert::TryFrom<i64>,
         <T as std::convert::TryFrom<i64>>::Error: std::error::Error + 'static,
     {
-        if self.read.has_virtual_marker() {
-            return match self
-                .read
-                .get_virtual_marker()
-                .expect("Virtual Marker to exist")
-            {
-                Marker::I64(int) => {
-                    self.read.clear_virtual();
-                    Ok(T::try_from(int).map_err(|e| Error::create(e.to_string()))?)
-                    // TODO: consider implementing From<TryIntError> into Error
-                }
-                m => Err(errors::unexpected_virtual_marker("Marker::I64", &m)),
-            };
-        }
-
-        match self.read.peek_marker()? {
-            Marker::I64(num) => {
-                let int = T::try_from(num);
-                if int.is_ok() {
-                    self.read.consume_peeked();
-                }
-                int.map_err(|e| Error::create(e.to_string()))
-            }
+        match self.read.consume_marker()? {
+            Marker::I64(num) => T::try_from(num).map_err(|e| Error::create(e.to_string())),
             m => Err(errors::unexpected_marker("Marker::I64", &m)),
         }
     }
 
     fn parse_f64(&mut self) -> SerdeResult<f64> {
-        match self.read.peek_marker()? {
-            Marker::F64(num) => {
-                self.read.consume_peeked();
-                Ok(num)
-            }
+        match self.read.consume_marker()? {
+            Marker::F64(num) => Ok(num),
             m => Err(errors::unexpected_marker("Marker::F64", &m)),
         }
     }
 
     fn parse_char(&mut self) -> SerdeResult<char> {
-        match self.read.peek_marker()? {
+        match self.read.consume_marker()? {
             Marker::String(len) if len == 1 => {
-                self.read.consume_peeked();
-                let bytes = self.read.consume_bytes(1)?;
-                Ok(bytes[0] as char)
+                Ok(self.read.consume_bytes(1)?[0] as char)
             }
             m => Err(errors::unexpected_marker("Marker::String(1)", &m)),
         }
     }
 
     fn parse_str(&mut self) -> SerdeResult<&'de str> {
-        if self.read.has_virtual_marker() {
-            return match self
-                .read
-                .get_virtual_marker()
-                .expect("Virtual Marker to exist")
-            {
-                Marker::String(_) => {
-                    let s = self.read.get_virtual_value().expect("Value to exist");
-                    self.read.clear_virtual();
-                    Ok(std::str::from_utf8(s)?)
-                }
-                m => Err(errors::unexpected_virtual_marker("Marker::String", &m)),
-            };
-        }
-
-        match self.read.peek_marker()? {
+        match self.read.consume_marker()? {
             Marker::String(len) => {
-                self.read.consume_peeked();
-                let bytes = self.read.consume_bytes(len)?;
-                Ok(std::str::from_utf8(bytes)?)
-            }
+                Ok(std::str::from_utf8(self.read.consume_bytes(len)?)?)
+            },
             m => Err(errors::unexpected_marker("Marker::String", &m)),
         }
     }
 
     fn parse_string(&mut self) -> SerdeResult<String> {
-        match self.read.peek_marker()? {
+        match self.read.consume_marker()? {
             Marker::String(len) => {
-                self.read.consume_peeked();
                 let bytes = self.read.consume_bytes(len)?.to_vec();
                 Ok(String::from_utf8(bytes)?)
             }
@@ -158,67 +107,47 @@ where
     }
 
     fn parse_bytes(&mut self) -> SerdeResult<&'de [u8]> {
-        match self.read.peek_marker()? {
+        match self.read.consume_marker()? {
             Marker::Bytes(len) => {
-                self.read.consume_peeked();
-                let bytes = self.read.consume_bytes(len)?;
-                Ok(bytes)
+                Ok(self.read.consume_bytes(len)?)
             }
             m => Err(errors::unexpected_marker("Marker::Bytes", &m)),
         }
     }
 
     fn parse_null(&mut self) -> SerdeResult<()> {
-        match self.read.peek_marker()? {
-            Marker::Null => {
-                self.read.consume_peeked();
-                Ok(())
-            }
+        match self.read.consume_marker()? {
+            Marker::Null => Ok(()),
             m => Err(errors::unexpected_marker("Marker::Null", &m)),
         }
     }
 
     fn parse_list(&mut self) -> SerdeResult<usize> {
-        if self.read.has_virtual_marker() {
-            return match self
-                .read
-                .get_virtual_marker()
-                .expect("Virtual Marker to exist")
-            {
-                Marker::List(len) => {
-                    self.read.clear_virtual();
-                    Ok(len)
-                }
-                m => Err(errors::unexpected_virtual_marker("Marker::List", &m)),
-            };
-        }
-
-        match self.read.peek_marker()? {
-            Marker::List(size) => {
-                self.read.consume_peeked();
-                Ok(size)
-            }
+        match self.read.consume_marker()? {
+            Marker::List(size) => Ok(size),
             m => Err(errors::unexpected_marker("Marker::List", &m)),
         }
     }
 
     fn parse_map(&mut self) -> SerdeResult<usize> {
-        match self.read.peek_marker()? {
-            Marker::Map(size) => {
-                self.read.consume_peeked();
-                Ok(size)
-            }
+        match self.read.consume_marker()? {
+            Marker::Map(size) => Ok(size),
             m => Err(errors::unexpected_marker("Marker::Map", &m)),
         }
     }
 
+    fn parse_map_or_struct(&mut self) -> SerdeResult<(bool, usize)> {
+        match self.read.consume_marker()? {
+            Marker::Map(size) => Ok((true, size)),
+            Marker::Struct(size) => Ok((false, size)),
+            m => Err(errors::unexpected_marker("Marker::Map or Marker::Structure", &m)),
+        }
+    }
+
     fn parse_enum(&mut self) -> SerdeResult<()> {
-        match self.read.peek_marker()? {
-            Marker::Map(len) if len == 1 => {
-                self.read.consume_peeked();
-                Ok(())
-            }
-            m => Err(errors::unexpected_marker("Marker::Map", &m)),
+        match self.read.consume_marker()? {
+            Marker::Map(len) if len == 1 => Ok(()),
+            m => Err(errors::unexpected_marker("Marker::Map(1)", &m)),
         }
     }
 
@@ -227,7 +156,7 @@ where
             Err(_) => false,
             Ok(marker) => match marker {
                 Marker::EOS => {
-                    self.read.consume_peeked();
+                    self.read.scratch_peeked();
                     true
                 }
                 _ => false,
@@ -436,20 +365,14 @@ where
     where
         V: de::Visitor<'de>,
     {
-        if let Marker::Struct(len) = self.read.peek_marker()? {
-            self.read.consume_peeked();
-            return visitor.visit_map(StructureAccess {
-                de: self,
-                size: len,
-                state: StructureAccessState::Signature,
-            });
+        match self.parse_map_or_struct()? {
+            (true, size) => visitor.visit_map(MapAccess {
+                de: self, len: size
+            }),
+            (false, size) => visitor.visit_map(StructureAccess {
+                de: self, size: size, state: StructureAccessState::Signature,
+            }),
         }
-
-        let map_len = self.parse_map()?;
-        visitor.visit_map(MapAccess {
-            de: self,
-            len: map_len,
-        })
     }
 
     fn deserialize_struct<V>(
@@ -464,7 +387,7 @@ where
         let map_len = self.parse_map()?;
         visitor.visit_map(MapAccess {
             de: self,
-            len: map_len,
+            len: map_len
         })
     }
 
