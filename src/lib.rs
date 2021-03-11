@@ -8,6 +8,7 @@ mod error;
 mod marker;
 mod read;
 mod ser;
+mod types;
 mod value;
 
 pub use de::from_bytes;

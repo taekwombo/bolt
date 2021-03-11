@@ -47,10 +47,8 @@ impl Default for Value {
 mod tests {
     use serde_bytes::ByteBuf;
     use std::collections::HashMap;
-
-    use super::*;
+    use super::Value;
     use crate::constants::marker::*;
-    use crate::*;
 
     fn buf(capacity: usize) -> ByteBuf {
         ByteBuf::with_capacity(capacity)
