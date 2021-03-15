@@ -7,7 +7,8 @@ use std::fmt;
 
 const MSG_ACK_FAILURE_SIGNATURE: u8 = 0x0E;
 const MSG_ACK_FAILURE_LENGTH: u8 = 0x00;
-const MSG_ACK_FAILURE_SERIALIZE_LENGTH: usize = serialize_length!(MSG_ACK_FAILURE_SIGNATURE, MSG_ACK_FAILURE_LENGTH);
+const MSG_ACK_FAILURE_SERIALIZE_LENGTH: usize =
+    serialize_length!(MSG_ACK_FAILURE_SIGNATURE, MSG_ACK_FAILURE_LENGTH);
 
 #[derive(Debug, PartialEq)]
 pub struct AckFailure;
@@ -56,7 +57,7 @@ impl<'de> de::Visitor<'de> for AckFailureVisitor {
                 Ok(AckFailure)
             }
             Some(key) => unexpected_key_access!(key),
-            _ => unexpected_key_access!()
+            _ => unexpected_key_access!(),
         }
     }
 }
@@ -64,30 +65,27 @@ impl<'de> de::Visitor<'de> for AckFailureVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{from_bytes, to_bytes};
-    use crate::error::SerdeResult;
-    use crate::constants::marker::TINY_STRUCT;
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
 
     const BYTES: &'static [u8] = &[TINY_STRUCT, MSG_ACK_FAILURE_SIGNATURE];
 
     #[test]
-    fn serialize () {
+    fn serialize() {
         let result = to_bytes(&AckFailure);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), BYTES);
     }
 
     #[test]
-    fn deserialize () {
+    fn deserialize() {
         let result = from_bytes::<AckFailure>(BYTES);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), AckFailure);
     }
 
     #[test]
-    fn deserialize_fail () {
+    fn deserialize_fail() {
         let result = from_bytes::<AckFailure>(&[TINY_STRUCT, MSG_ACK_FAILURE_SIGNATURE + 1]);
         assert!(result.is_err());
     }
 }
-
