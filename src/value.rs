@@ -45,10 +45,10 @@ impl Default for Value {
 
 #[cfg(test)]
 mod tests {
-    use serde_bytes::ByteBuf;
-    use std::collections::HashMap;
     use super::Value;
     use crate::constants::marker::*;
+    use serde_bytes::ByteBuf;
+    use std::collections::HashMap;
 
     fn buf(capacity: usize) -> ByteBuf {
         ByteBuf::with_capacity(capacity)

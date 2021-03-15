@@ -7,13 +7,13 @@ macro_rules! access_check {
 
     ($map_access:ident signature $expecting:ident) => {
         {
-            let signature = $map_access.next_value::<u8>()?;
-            if signature != $expecting {
+            let __signature = $map_access.next_value::<u8>()?;
+            if __signature != $expecting {
                 return Err(
                     V::Error::custom(format!(
                             "Expected {:#04x} signature. Got {:#04x} instead.",
                             $expecting,
-                            signature,
+                            __signature,
                     ))
                 );
             }
@@ -22,15 +22,15 @@ macro_rules! access_check {
 
     ($map_access:ident key $expecting:ident) => {
         {
-            let key = $map_access.next_key::<&str>()?;
-            match key {
-                Some(key) => {
-                    if key != $expecting {
+            let __key = $map_access.next_key::<&str>()?;
+            match __key {
+                Some(__key) => {
+                    if __key != $expecting {
                         return Err(
                             V::Error::custom(format!(
                                     "Expected key {}. Got key {} insted.",
                                     $expecting,
-                                    key,
+                                    __key,
                             ))
                         );
                     }
@@ -42,8 +42,8 @@ macro_rules! access_check {
 
     ($map_access:ident fields) => {
         {
-            let fields = $map_access.next_value::<Vec<()>>()?;
-            if !fields.is_empty() {
+            let __fields = $map_access.next_value::<Vec<()>>()?;
+            if !__fields.is_empty() {
                 return Err(V::Error::custom(format!(
                     "Unexpected elements in structure fields"
                 )));
@@ -53,12 +53,12 @@ macro_rules! access_check {
 
     ($map_access:ident key) => {
         {
-            let key = $map_access.next_key::<&str>()?;
-            if key.is_some() {
+            let __key = $map_access.next_key::<&str>()?;
+            if __key.is_some() {
                 return Err(
                     V::Error::custom(format!(
                             "Unexpected key {:?}. Expected structure key to be None",
-                            key
+                            __key
                     ))
                 );
             }
@@ -68,18 +68,22 @@ macro_rules! access_check {
 
 macro_rules! unexpected_key_access {
     ($key:ident) => {
-        Err(V::Error::custom(format!("Expected STRUCTURE_SIG_KEY. Got {} instead.", $key)))
+        Err(V::Error::custom(format!(
+            "Expected STRUCTURE_SIG_KEY. Got {} instead.",
+            $key
+        )))
     };
     () => {
-        Err(V::Error::custom("Expected STRUCTURE_SIG_KEY. Got None instead."))
+        Err(V::Error::custom(
+            "Expected STRUCTURE_SIG_KEY. Got None instead.",
+        ))
     };
 }
 
 macro_rules! serialize_length {
     ($signature:ident, $length:ident) => {
         (($signature as usize) << 56) + ($length as usize)
-    }
+    };
 }
 
 mod message;
-
