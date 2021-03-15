@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! bytes {
     ($($slice:expr),* $(,)*) => {
         {
@@ -9,7 +8,6 @@ macro_rules! bytes {
     }
 }
 
-#[macro_export]
 macro_rules! assert_ser_de {
     ($($value:expr),* $(,)*) => {
         $(
@@ -18,7 +16,6 @@ macro_rules! assert_ser_de {
     }
 }
 
-#[macro_export]
 macro_rules! assert_ser {
     (ok $var:ident $bytes:expr) => {
         if $var.is_err() {
@@ -41,7 +38,6 @@ macro_rules! assert_ser {
     }
 }
 
-#[macro_export]
 macro_rules! assert_de {
     (ok $var:ident $value:expr) => {
         if $var.is_err() {
