@@ -3,3 +3,4 @@ mod discard_all;
 mod failure;
 mod init;
 mod run;
+mod success;
