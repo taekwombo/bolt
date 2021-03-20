@@ -6,8 +6,7 @@ use serde::{
     de::{self, Error},
     ser::{self, SerializeTupleStruct},
 };
-use std::collections::HashMap;
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 const MSG_FAILURE_SIGNATURE: u8 = 0x7F;
 const MSG_FAILURE_LENGTH: u8 = 0x01;
