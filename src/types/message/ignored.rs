@@ -35,10 +35,10 @@ impl<'de> de::Deserialize<'de> for Ignored {
 
 struct IgnoredVisitor;
 
-impl<'de> de::Visitor for IgnoredVisitor {
+impl<'de> de::Visitor<'de> for IgnoredVisitor {
     type Value = Ignored;
 
-    fn expecting(&self, mut formatter: fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("Ignored message")
     }
 

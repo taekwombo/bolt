@@ -6,7 +6,7 @@ use serde::{
     de::{self, Error},
     ser::{self, SerializeTupleStruct},
 };
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 const MSG_RECORD_SIGNATURE: u8 = 0x71;
 const MSG_RECORD_LENGTH: u8 = 0x01;
@@ -88,10 +88,7 @@ impl<'de> de::Visitor<'de> for RecordVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        constants::marker::{TINY_LIST, TINY_STRING, TINY_STRUCT},
-        from_bytes, to_bytes,
-    };
+    use crate::{from_bytes, to_bytes};
 
     const BYTES: &'static [u8] = &[0x0B1, 0x071, 0x093, 0x001, 0x002, 0x003];
 

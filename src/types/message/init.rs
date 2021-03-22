@@ -1,7 +1,4 @@
-use crate::{
-    constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY},
-    Value,
-};
+use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
 use serde::{
     de::{self, Error},
     ser::{self, SerializeTupleStruct},
@@ -105,10 +102,7 @@ impl<'de> de::Visitor<'de> for InitVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
-        from_bytes, to_bytes,
-    };
+    use crate::{from_bytes, to_bytes};
 
     const BYTES: &'static [u8] = &[
         0xB2, 0x01, 0x8C, 0x4D, 0x79, 0x43, 0x6C, 0x69, 0x65, 0x6E, 0x74, 0x2F, 0x31, 0x2E, 0x30,

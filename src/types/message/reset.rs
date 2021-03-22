@@ -37,7 +37,7 @@ struct ResetVisitor;
 impl<'de> de::Visitor<'de> for ResetVisitor {
     type Value = Reset;
 
-    fn expecting(&self, mut formatter: fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("Reset message")
     }
 
@@ -46,7 +46,7 @@ impl<'de> de::Visitor<'de> for ResetVisitor {
         V: de::MapAccess<'de>,
     {
         match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_NAME => {
+            Some(key) if key == STRUCTURE_SIG_KEY => {
                 access_check!(map_access, {
                     signature(MSG_RESET_SIGNATURE),
                     key(STRUCTURE_FIELDS_KEY),

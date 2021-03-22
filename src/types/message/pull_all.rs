@@ -24,7 +24,7 @@ impl ser::Serialize for PullAll {
     }
 }
 
-impl<'de> de::Deserialize<'de> for DiscardAll {
+impl<'de> de::Deserialize<'de> for PullAll {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
@@ -38,7 +38,7 @@ struct PullAllVisitor;
 impl<'de> de::Visitor<'de> for PullAllVisitor {
     type Value = PullAll;
 
-    fn expecting(&self, mut formatter: fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("PullAll message")
     }
 
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<PullAll>(&[TINY_STRUCT, MSG_DISCARD_ALL_SIGNATURE + 1]);
+        let result = from_bytes::<PullAll>(&[TINY_STRUCT, MSG_PULL_ALL_SIGNATURE + 1]);
         assert!(result.is_err());
     }
 }

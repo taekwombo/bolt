@@ -123,7 +123,7 @@ mod tests {
         macro_rules! map {
             ($($key:literal => $value:expr),* $(,)*) => {
                {
-                  let mut map = std::collections::HashMap::new();
+                  let map = std::collections::HashMap::new();
                   $(map.insert(String::from($key), $value);)*
                   map
                }

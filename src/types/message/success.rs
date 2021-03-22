@@ -14,17 +14,17 @@ const MSG_SUCCESS_SERIALIZE_LENGTH: usize =
     serialize_length!(MSG_SUCCESS_SIGNATURE, MSG_SUCCESS_LENGTH);
 
 #[derive(Debug, PartialEq)]
-pub struct Success<'a> {
-    metadata: HashMap<&'a str, Value>,
+pub struct Success {
+    metadata: HashMap<String, Value>,
 }
 
-impl<'a> Success<'a> {
-    fn new(metadata: HashMap<&'a str, Value>) -> Self {
+impl Success {
+    fn new(metadata: HashMap<String, Value>) -> Self {
         Self { metadata }
     }
 }
 
-impl<'a> ser::Serialize for Success<'a> {
+impl ser::Serialize for Success {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -36,7 +36,7 @@ impl<'a> ser::Serialize for Success<'a> {
     }
 }
 
-impl<'de> de::Deserialize<'de> for Success<'de> {
+impl<'de> de::Deserialize<'de> for Success {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
@@ -48,9 +48,9 @@ impl<'de> de::Deserialize<'de> for Success<'de> {
 struct SuccessVisitor;
 
 impl<'de> de::Visitor<'de> for SuccessVisitor {
-    type Value = Success<'de>;
+    type Value = Success;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("Success message")
     }
 
@@ -64,7 +64,7 @@ impl<'de> de::Visitor<'de> for SuccessVisitor {
                     signature(MSG_SUCCESS_SIGNATURE),
                     key(STRUCTURE_FIELDS_KEY),
                 });
-                let mut fields: Vec<HashMap<&str, Value>> = map_access.next_value()?;
+                let mut fields: Vec<HashMap<String, Value>> = map_access.next_value()?;
                 if fields.len() != 1 {
                     return Err(V::Error::custom(format!(
                         "Expected fields length to be equal 1. Got {} instead",
@@ -87,20 +87,17 @@ impl<'de> de::Visitor<'de> for SuccessVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
-        from_bytes, to_bytes,
-    };
+    use crate::{from_bytes, to_bytes};
 
     const BYTES: &'static [u8] = &[
         0xB1, 0x70, 0xA1, 0x86, 0x66, 0x69, 0x65, 0x6C, 0x64, 0x73, 0x92, 0x84, 0x6E, 0x61, 0x6D,
         0x65, 0x83, 0x61, 0x67, 0x65,
     ];
 
-    fn get_metadata() -> HashMap<&'static str, Value> {
+    fn get_metadata() -> HashMap<String, Value> {
         let mut metadata = HashMap::new();
         metadata.insert(
-            "fields",
+            String::from("fields"),
             Value::List(vec![
                 Value::String(String::from("name")),
                 Value::String(String::from("age")),
@@ -119,14 +116,14 @@ mod tests {
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Success<'_>>(BYTES);
+        let result = from_bytes::<Success>(BYTES);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), Success::new(get_metadata()));
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Success<'_>>(&BYTES[0..(BYTES.len() - 1)]);
+        let result = from_bytes::<Success>(&BYTES[0..(BYTES.len() - 1)]);
         assert!(result.is_err());
     }
 }

@@ -1,13 +1,3 @@
-macro_rules! bytes {
-    ($($slice:expr),* $(,)*) => {
-        {
-            let mut arr: Vec<u8> = Vec::new();
-            $(arr.extend_from_slice(&$slice);)*
-            arr
-        }
-    }
-}
-
 macro_rules! assert_ser_de {
     ($($value:expr),* $(,)*) => {
         $(
