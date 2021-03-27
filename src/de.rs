@@ -336,6 +336,8 @@ where
     where
         V: de::Visitor<'de>,
     {
+        // TODO: Impl custom deserializer so the expected tuple size
+        // is validated against marker length
         self.deserialize_seq(visitor)
     }
 
@@ -348,6 +350,8 @@ where
     where
         V: de::Visitor<'de>,
     {
+        // TODO: Impl custom deserializer so the expected tuple size
+        // is validated against marker length
         self.deserialize_seq(visitor)
     }
 

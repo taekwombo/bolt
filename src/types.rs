@@ -86,4 +86,5 @@ macro_rules! serialize_length {
     };
 }
 
+mod graph;
 mod message;
