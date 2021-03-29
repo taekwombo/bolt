@@ -88,12 +88,12 @@ mod tests {
     use super::*;
     use crate::{from_bytes, to_bytes};
 
-    const BYTES: &'static [u8] = &[
+    const BYTES: &[u8] = &[
         0xB2, 0x10, 0x8F, 0x52, 0x45, 0x54, 0x55, 0x52, 0x4E, 0x20, 0x31, 0x20, 0x41, 0x53, 0x20,
         0x6E, 0x75, 0x6D, 0xA0,
     ];
 
-    const STATEMENT: &'static str = "RETURN 1 AS num";
+    const STATEMENT: &str = "RETURN 1 AS num";
 
     #[test]
     fn serialize() {

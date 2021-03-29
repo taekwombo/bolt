@@ -62,6 +62,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn value_serde() {
         assert_ser_de! {
             Value::default(),
@@ -119,6 +120,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::let_and_return)]
     fn structure_into_map() {
         #[derive(Debug, serde_derive::Serialize, serde_derive::Deserialize)]
         struct S {

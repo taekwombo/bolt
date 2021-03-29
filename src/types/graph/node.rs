@@ -80,9 +80,9 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{from_bytes, to_bytes};
 
-    const BYTES: &'static [u8] = &[179, 78, 100, 145, 132, 110, 111, 100, 101, 160];
+    const BYTES: &[u8] = &[179, 78, 100, 145, 132, 110, 111, 100, 101, 160];
 
     #[test]
     fn serialize() {

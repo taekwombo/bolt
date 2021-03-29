@@ -66,7 +66,7 @@ mod tests {
     use super::*;
     use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
 
-    const BYTES: &'static [u8] = &[TINY_STRUCT, MSG_RESET_SIGNATURE];
+    const BYTES: &[u8] = &[TINY_STRUCT, MSG_RESET_SIGNATURE];
 
     #[test]
     fn serialize() {

@@ -16,7 +16,6 @@ where
 
 mod errors {
     use super::{Error, Marker};
-    use std::fmt;
 
     pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> Error {
         Error::create(format!("Expected {}, got {} instead.", expected, actual))
@@ -651,6 +650,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn deserialize_primitive_newtype() {
         assert_deserialize! {
             NewType<i8> => [10],

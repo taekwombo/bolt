@@ -89,7 +89,7 @@ mod tests {
     use super::*;
     use crate::{from_bytes, to_bytes};
 
-    const BYTES: &'static [u8] = &[0x0B1, 0x071, 0x093, 0x001, 0x002, 0x003];
+    const BYTES: &[u8] = &[0x0B1, 0x071, 0x093, 0x001, 0x002, 0x003];
 
     fn get_fields() -> Vec<Value> {
         vec![Value::I64(1), Value::I64(2), Value::I64(3)]

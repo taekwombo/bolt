@@ -141,6 +141,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_marker_to_vec() {
         assert_marker_to_vec! {
             Marker::I64(127) => [127],
@@ -149,10 +150,10 @@ mod tests {
             Marker::I64(200) => [INT_16, 0, 200],
             Marker::I64(-200) => [INT_16, 255, 56],
             Marker::I64(-129) => [INT_16, 255, 127],
-            Marker::I64(100000) => [INT_32, 0, 1, 134, 160],
-            Marker::I64(-100000) => [INT_32, 255, 254, 121, 96],
-            Marker::I64(3000000000) => [INT_64, 0, 0, 0, 0, 178, 208, 94, 0],
-            Marker::I64(-3000000000) => [INT_64, 255, 255, 255, 255, 77, 47, 162, 0],
+            Marker::I64(100_000) => [INT_32, 0, 1, 134, 160],
+            Marker::I64(-100_000) => [INT_32, 255, 254, 121, 96],
+            Marker::I64(3_000_000_000) => [INT_64, 0, 0, 0, 0, 178, 208, 94, 0],
+            Marker::I64(-3_000_000_000) => [INT_64, 255, 255, 255, 255, 77, 47, 162, 0],
             Marker::F64(100f64) => [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0],
             Marker::String(10) => [TINY_STRING + 10],
             Marker::String(64) => [STRING_8, 64],

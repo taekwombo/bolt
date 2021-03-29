@@ -86,7 +86,7 @@ mod tests {
         from_bytes, to_bytes,
     };
 
-    const BYTES: &'static [u8] = &[TINY_STRUCT + 1, MSG_FAILURE_SIGNATURE, TINY_MAP];
+    const BYTES: &[u8] = &[TINY_STRUCT + 1, MSG_FAILURE_SIGNATURE, TINY_MAP];
 
     #[test]
     fn serialize() {

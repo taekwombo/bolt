@@ -1,8 +1,5 @@
 use super::{Node, UnboundRelationship};
-use crate::{
-    constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY},
-    Value,
-};
+use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
@@ -82,10 +79,10 @@ impl<'de> de::Visitor<'de> for PathVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{from_bytes, to_bytes};
     use std::collections::HashMap;
 
-    const BYTES: &'static [u8] = &[
+    const BYTES: &[u8] = &[
         179, 80, 145, 179, 78, 1, 145, 132, 78, 111, 100, 101, 160, 145, 179, 82, 201, 0, 200, 132,
         84, 121, 112, 101, 160, 145, 100,
     ];

@@ -486,10 +486,10 @@ mod tests {
 
     #[derive(Serialize)]
     enum TestEnum {
-        UnitVariant,
-        NewTypeVariant(i64),
-        TupleVariant(u8, u8),
-        StructVariant { one: u8 },
+        Unit,
+        NewType(i64),
+        Tuple(u8, u8),
+        Struct { one: u8 },
     }
 
     #[test]
@@ -530,10 +530,10 @@ mod tests {
             NewType(200) => [INT_16, 0, 200],
             NewType(-200) => [INT_16, 255, 56],
             NewType(-129) => [INT_16, 255, 127],
-            NewType(100000) => [INT_32, 0, 1, 134, 160],
-            NewType(-100000) => [INT_32, 255, 254, 121, 96],
-            NewType(3000000000u64) => [INT_64, 0, 0, 0, 0, 178, 208, 94, 0],
-            NewType(-3000000000i64) => [INT_64, 255, 255, 255, 255, 77, 47, 162, 0],
+            NewType(100_000) => [INT_32, 0, 1, 134, 160],
+            NewType(-100_000) => [INT_32, 255, 254, 121, 96],
+            NewType(3_000_000_000_u64) => [INT_64, 0, 0, 0, 0, 178, 208, 94, 0],
+            NewType(-3_000_000_000_i64) => [INT_64, 255, 255, 255, 255, 77, 47, 162, 0],
             NewType(100f64) => [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0],
             NewType(100f32) => [FLOAT_64, 64, 89, 0, 0, 0, 0, 0, 0],
             NewType("11111") => [TINY_STRING + 5, 49, 49, 49, 49, 49],
@@ -559,17 +559,17 @@ mod tests {
     fn serialize_list() {
         assert_bytes! {
             List(vec![1; 4]) => bytes!([TINY_LIST + 4], [1; 4]),
-            List(vec![NewType(String::from("1".repeat(12)))]) => bytes!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
+            List(vec![NewType("1".repeat(12))]) => bytes!([TINY_LIST + 1, TINY_STRING + 12], [49; 12]),
         };
     }
 
     #[test]
     fn serialize_enum() {
         assert_bytes! {
-            TestEnum::UnitVariant => bytes!([TINY_MAP + 1, TINY_STRING + 11], b"UnitVariant".to_vec(), [NULL]),
-            TestEnum::NewTypeVariant(0) => bytes!([TINY_MAP + 1, TINY_STRING + 14], b"NewTypeVariant".to_vec(), [0]),
-            TestEnum::TupleVariant(1, 2) => bytes!([TINY_MAP + 1, TINY_STRING + 12], b"TupleVariant".to_vec(), [TINY_LIST + 2, 1, 2]),
-            TestEnum::StructVariant { one: 1 } => bytes!([TINY_MAP + 1, TINY_STRING + 13], b"StructVariant".to_vec(), [TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [1]),
+            TestEnum::Unit => bytes!([TINY_MAP + 1, TINY_STRING + 4], b"Unit".to_vec(), [NULL]),
+            TestEnum::NewType(0) => bytes!([TINY_MAP + 1, TINY_STRING + 7], b"NewType".to_vec(), [0]),
+            TestEnum::Tuple(1, 2) => bytes!([TINY_MAP + 1, TINY_STRING + 5], b"Tuple".to_vec(), [TINY_LIST + 2, 1, 2]),
+            TestEnum::Struct { one: 1 } => bytes!([TINY_MAP + 1, TINY_STRING + 6], b"Struct".to_vec(), [TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [1]),
         }
     }
 

@@ -358,6 +358,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_peek_marker() {
         assert_try_peek! {
             [TINY_MAP] => Marker::Map(0),

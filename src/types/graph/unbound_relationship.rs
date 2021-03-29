@@ -83,9 +83,9 @@ impl<'de> de::Visitor<'de> for UnboundRelationshipVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{from_bytes, to_bytes};
 
-    const BYTES: &'static [u8] = &[179, 82, 100, 132, 110, 111, 100, 101, 160];
+    const BYTES: &[u8] = &[179, 82, 100, 132, 110, 111, 100, 101, 160];
 
     #[test]
     fn serialize() {
