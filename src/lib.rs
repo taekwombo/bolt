@@ -2,6 +2,9 @@
 #[macro_use]
 mod test_macros;
 
+#[macro_use]
+mod macros;
+
 pub mod constants;
 mod de;
 mod error;

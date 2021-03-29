@@ -5,21 +5,21 @@ use std::fmt;
 
 macro_rules! to_bytes {
     ($marker_b:expr, $t:ty, $e:expr) => {{
-        let mut header = vec![$marker_b];
-        header.extend_from_slice(&<$t>::try_from($e).unwrap().to_be_bytes());
-        header
+        let mut __header = vec![$marker_b];
+        __header.extend_from_slice(&<$t>::try_from($e).unwrap().to_be_bytes());
+        __header
     }};
     // i64
     ($marker_b:expr, $e:expr) => {{
-        let mut header = vec![$marker_b];
-        header.extend_from_slice(&$e.to_be_bytes());
-        header
+        let mut __header = vec![$marker_b];
+        __header.extend_from_slice(&$e.to_be_bytes());
+        __header
     }};
     // f64
     ($e:expr) => {{
-        let mut header = vec![FLOAT_64];
-        header.extend_from_slice(&$e.to_bits().to_be_bytes());
-        header
+        let mut __header = vec![FLOAT_64];
+        __header.extend_from_slice(&$e.to_bits().to_be_bytes());
+        __header
     }};
 }
 

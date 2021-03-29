@@ -3,7 +3,7 @@ use crate::{
     Value,
 };
 use serde::{
-    de::{self, Error},
+    de,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
@@ -15,7 +15,6 @@ const MSG_RELATIONSHIP_SERIALIZE_LENGTH: usize =
 
 #[derive(Debug, PartialEq)]
 pub struct Relationship {
-    pub properties: HashMap<String, Value>,
     pub identity: i64,
     pub start_node_identity: i64,
     pub end_node_identity: i64,

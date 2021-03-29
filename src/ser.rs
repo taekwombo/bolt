@@ -469,16 +469,6 @@ mod tests {
     use serde_bytes::Bytes;
     use serde_derive::Serialize;
 
-    macro_rules! bytes {
-        ($($slice:expr),* $(,)*) => {
-            {
-                let mut arr = vec![];
-                $(arr.extend_from_slice(&$slice);)*
-                arr
-            }
-        }
-    }
-
     macro_rules! assert_bytes {
         ($($to_ser:expr => $expected:expr),* $(,)*) => {
             $(assert_eq!(to_bytes(&$to_ser).map_err(|e| eprintln!("{}", e)).unwrap(), $expected);)*
@@ -586,16 +576,6 @@ mod tests {
     #[test]
     fn serialize_map() {
         use std::collections::HashMap;
-
-        macro_rules! map {
-            ($($key:literal: $value:expr),* $(,)*) => {
-                {
-                    let mut map = HashMap::new();
-                    $(map.insert($key, $value);)*
-                    map
-                }
-            }
-        }
 
         #[derive(Serialize)]
         struct TestStruct {

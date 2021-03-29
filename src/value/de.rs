@@ -1,5 +1,5 @@
 use super::Value;
-use crate::constants::STRUCTURE_SIG_KEY;
+use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_SIG_KEY};
 use crate::error::{Error, SerdeResult};
 use serde::de::IntoDeserializer;
 use serde::{de, forward_to_deserialize_any};
@@ -93,30 +93,28 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let first_key: Option<&str> = map_access.next_key()?;
-        match first_key {
+        match map_access.next_key::<&str>()? {
             Some(key) if key == STRUCTURE_SIG_KEY => {
-                let signature: u8 = map_access.next_value()?;
-                map_access.next_key::<&str>()?;
+                let signature: u8 = map_access.next_value::<u8>()?;
+                access_check!(map_access, {
+                    key(STRUCTURE_FIELDS_KEY),
+                });
                 let fields: Vec<Value> = map_access.next_value()?;
-
-                match map_access.next_key()? {
-                    Option::<&str>::Some(k) => Err(de::Error::custom(format!(
-                        "Unexpected key: {} when deseralizing Structure",
-                        k
-                    ))),
-                    None => Ok(Value::Structure { signature, fields }),
-                }
+                access_check!(map_access, {
+                    key(),
+                });
+                Ok(Self::Value::Structure { signature, fields })
             }
             Some(key) => {
                 let mut map: HashMap<String, Value> = HashMap::new();
                 map.insert(String::from(key), map_access.next_value()?);
-                while let Some(key) = map_access.next_key::<&str>()? {
-                    map.insert(String::from(key), map_access.next_value()?);
+                while let Some(key) = map_access.next_key::<String>()? {
+                    map.insert(key, map_access.next_value()?);
                 }
                 Ok(Value::Map(map))
             }
-            None => Ok(Value::Map(HashMap::new())),
+            // TODO: Why does this produce empty map??
+            None => Ok(Self::Value::Map(HashMap::new())),
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
 use serde::{
-    de::{self, Error},
+    de,
     ser::{self, SerializeTupleStruct},
 };
 use serde_derive::{Deserialize, Serialize};

@@ -3,7 +3,7 @@ use crate::{
     Value,
 };
 use serde::{
-    de::{self, Error},
+    de,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
@@ -59,18 +59,18 @@ impl<'de> de::Visitor<'de> for FailureVisitor {
                     key(STRUCTURE_FIELDS_KEY),
                 });
                 let mut fields: Vec<HashMap<String, Value>> = map_access.next_value()?;
-                if fields.len() != 1 {
-                    return Err(V::Error::custom(format!(
-                        "Expected fields length to be equal 1. Got {} instead",
-                        fields.len()
+                if fields.len() != MSG_FAILURE_LENGTH as usize {
+                    return Err(<V::Error as ::serde::de::Error>::custom(format!(
+                        "Expected fields length to be equal {}. Got {} instead.",
+                        MSG_FAILURE_LENGTH,
+                        fields.len(),
                     )));
                 }
+                let metadata = fields.pop().expect("Field element to exist");
                 access_check!(map_access, {
                     key(),
                 });
-                Ok(Failure {
-                    metadata: fields.pop().unwrap(),
-                })
+                Ok(Failure { metadata })
             }
             Some(key) => unexpected_key_access!(key),
             None => unexpected_key_access!(),

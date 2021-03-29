@@ -7,9 +7,9 @@ use std::fmt::Debug;
 macro_rules! bytes {
     ($($slice:expr),* $(,)*) => {
         {
-            let mut arr: Vec<u8> = Vec::new();
-            $(arr.extend_from_slice(&$slice);)*
-            arr
+            let mut __arr: Vec<u8> = Vec::new();
+            $(__arr.extend_from_slice(&$slice);)*
+            __arr
         }
     }
 }
@@ -17,9 +17,9 @@ macro_rules! bytes {
 macro_rules! map {
    ($($key:literal => $value:expr),* $(,)*) => {
       {
-         let mut map = std::collections::HashMap::new();
-         $(map.insert(String::from($key), $value);)*
-         map
+         let mut __map = std::collections::HashMap::new();
+         $(__map.insert(String::from($key), $value);)*
+         __map
       }
    }
 }

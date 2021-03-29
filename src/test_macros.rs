@@ -49,3 +49,23 @@ macro_rules! assert_de {
         )+
     };
 }
+
+macro_rules! bytes {
+    ($($slice:expr),* $(,)*) => {
+        {
+            let mut __arr = Vec::new();
+            $(__arr.extend_from_slice(&$slice);)*
+            __arr
+        }
+    }
+}
+
+macro_rules! map {
+    ($($key:literal: $value:expr),* $(,)*) => {
+        {
+            let mut __map = HashMap::new();
+            $(__map.insert($key, $value);)*
+            __map
+        }
+    }
+}

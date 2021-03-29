@@ -16,9 +16,17 @@ where
 
 mod errors {
     use super::{Error, Marker};
+    use std::fmt;
 
     pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> Error {
         Error::create(format!("Expected {}, got {} instead.", expected, actual))
+    }
+
+    pub(super) fn invalid_length(kind: &str, expected: usize, actual: usize) -> Error {
+        Error::create(format!(
+            "Expected {} length to be equal to {}, got {} instead",
+            kind, expected, actual
+        ))
     }
 }
 
@@ -332,27 +340,35 @@ where
         visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
-    fn deserialize_tuple<V>(self, _size: usize, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_tuple<V>(self, size: usize, visitor: V) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        // TODO: Impl custom deserializer so the expected tuple size
-        // is validated against marker length
-        self.deserialize_seq(visitor)
+        let list_len = self.parse_list()?;
+        if list_len != size {
+            return Err(errors::invalid_length("tuple", list_len, size));
+        }
+        visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
     fn deserialize_tuple_struct<V>(
         self,
-        _name: &str,
-        _size: usize,
+        name: &str,
+        size: usize,
         visitor: V,
     ) -> SerdeResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        // TODO: Impl custom deserializer so the expected tuple size
-        // is validated against marker length
-        self.deserialize_seq(visitor)
+        let list_len = self.parse_list()?;
+        if list_len != size {
+            return Err(errors::invalid_length(
+                &format!("tuple struct ({})", name),
+                list_len,
+                size,
+            ));
+        }
+        visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
     fn deserialize_map<V>(self, visitor: V) -> SerdeResult<V::Value>
@@ -607,16 +623,6 @@ mod tests {
     use crate::constants::marker::*;
     use serde_bytes::{ByteBuf, Bytes};
     use serde_derive::Deserialize;
-
-    macro_rules! bytes {
-        ($($slice:expr),* $(,)*) => {
-            {
-                let mut arr = Vec::new();
-                $(arr.extend_from_slice(&$slice);)*
-                arr
-            }
-        }
-    }
 
     macro_rules! assert_deserialize {
         ($($t:ty => $arr:expr),* $(,)*) => {

@@ -120,16 +120,6 @@ mod tests {
 
     #[test]
     fn structure_into_map() {
-        macro_rules! map {
-            ($($key:literal => $value:expr),* $(,)*) => {
-               {
-                  let map = std::collections::HashMap::new();
-                  $(map.insert(String::from($key), $value);)*
-                  map
-               }
-            }
-         }
-
         #[derive(Debug, serde_derive::Serialize, serde_derive::Deserialize)]
         struct S {
             signature: u8,

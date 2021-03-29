@@ -3,7 +3,7 @@ use crate::{
     Value,
 };
 use serde::{
-    de::{self, Error},
+    de,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
