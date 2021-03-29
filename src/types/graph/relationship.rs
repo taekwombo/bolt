@@ -15,11 +15,12 @@ const MSG_RELATIONSHIP_SERIALIZE_LENGTH: usize =
 
 #[derive(Debug, PartialEq)]
 pub struct Relationship {
-    identity: i64,
-    start_node_identity: i64,
-    end_node_identity: i64,
-    r#type: String,
-    properties: HashMap<String, Value>,
+    pub properties: HashMap<String, Value>,
+    pub identity: i64,
+    pub start_node_identity: i64,
+    pub end_node_identity: i64,
+    pub r#type: String,
+    pub properties: HashMap<String, Value>,
 }
 
 impl ser::Serialize for Relationship {
@@ -53,7 +54,7 @@ impl<'de> de::Visitor<'de> for RelationshipVisitor {
     type Value = Relationship;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Relationship message")
+        formatter.write_str("Relationship type")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>

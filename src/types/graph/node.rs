@@ -14,9 +14,9 @@ const MSG_NODE_SERIALIZE_LENGTH: usize = serialize_length!(MSG_NODE_SIGNATURE, M
 
 #[derive(Debug, PartialEq)]
 pub struct Node {
-    identity: i64,
-    labels: Vec<String>,
-    properties: HashMap<String, Value>,
+    pub identity: i64,
+    pub labels: Vec<String>,
+    pub properties: HashMap<String, Value>,
 }
 
 impl ser::Serialize for Node {
@@ -48,7 +48,7 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
     type Value = Node;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Node message")
+        formatter.write_str("Node type")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
