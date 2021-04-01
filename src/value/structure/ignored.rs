@@ -1,4 +1,5 @@
-use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
+use super::super::BoltStructure;
+use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
@@ -13,13 +14,21 @@ const MSG_IGNORED_SERIALIZE_LENGTH: usize =
 #[derive(Debug, PartialEq)]
 pub struct Ignored;
 
+impl BoltStructure for Ignored {
+    const SIG: u8 = 0x7E;
+    const LEN: u8 = 0x00;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = Vec<()>;
+}
+
 impl ser::Serialize for Ignored {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         serializer
-            .serialize_tuple_struct(STRUCTURE_NAME, MSG_IGNORED_SERIALIZE_LENGTH)?
+            .serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?
             .end()
     }
 }
@@ -39,53 +48,38 @@ impl<'de> de::Visitor<'de> for IgnoredVisitor {
     type Value = Ignored;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Ignored message")
+        formatter.write_str("Ignored")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_IGNORED_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                    fields(),
-                    key(),
-                });
-                Ok(Ignored)
-            }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
+        structure_access!(map_access, Ignored, fields(0));
+        Ok(Ignored)
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod ignored_test {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
 
-    const BYTES: &[u8] = &[TINY_STRUCT, MSG_IGNORED_SIGNATURE];
+    const BYTES: &[u8] = &[TINY_STRUCT, Ignored::SIG];
 
     #[test]
     fn serialize() {
-        let result = to_bytes(&Ignored);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        test::ser(&Ignored, BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Ignored>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Ignored);
+        test::de(&Ignored, BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Ignored>(&[TINY_STRUCT, MSG_IGNORED_SIGNATURE + 1]);
-        assert!(result.is_err());
+        test::de_err::<Ignored>(&[TINY_STRUCT, Ignored::SIG + 1]);
+        test::de_err::<Ignored>(&[TINY_STRUCT, Ignored::SIG, 0]);
     }
 }

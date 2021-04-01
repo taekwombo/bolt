@@ -1,6 +1,8 @@
+#![feature(const_generics)]
+
 #[cfg(test)]
 #[macro_use]
-mod test_macros;
+mod test;
 
 #[macro_use]
 mod macros;

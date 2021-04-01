@@ -1,19 +1,23 @@
-use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
+use super::super::BoltStructure;
+use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
 };
-use serde_derive::{Deserialize, Serialize};
 use std::fmt;
-
-const MSG_INIT_LENGTH: u8 = 0x02;
-const MSG_INIT_SIGNATURE: u8 = 0x01;
-const MSG_INIT_SERIALIZE_LENGTH: usize = serialize_length!(MSG_INIT_SIGNATURE, MSG_INIT_LENGTH);
 
 #[derive(Debug, PartialEq)]
 pub struct Init {
     client: String,
     auth: BasicAuth,
+}
+
+impl BoltStructure for Init {
+    const SIG: u8 = 0x01;
+    const LEN: u8 = 0x02;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = (String, BasicAuth);
 }
 
 impl Init {
@@ -25,8 +29,8 @@ impl Init {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Serialize)]
-struct BasicAuth {
+#[derive(Debug, serde_derive::Deserialize, PartialEq, serde_derive::Serialize)]
+pub struct BasicAuth {
     scheme: String,
     principal: String,
     credentials: String,
@@ -48,7 +52,7 @@ impl<'a> ser::Serialize for Init {
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, MSG_INIT_SERIALIZE_LENGTH)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
         ts_serializer.serialize_field(&self.client)?;
         ts_serializer.serialize_field(&self.auth)?;
         ts_serializer.end()
@@ -70,39 +74,25 @@ impl<'de> de::Visitor<'de> for InitVisitor {
     type Value = Init;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Init message")
+        formatter.write_str("Init")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_INIT_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                });
-
-                let fields: (String, BasicAuth) = map_access.next_value()?;
-                access_check!(map_access, {
-                    key(),
-                });
-                Ok(Init {
-                    client: fields.0,
-                    auth: fields.1,
-                })
-            }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
+        let (client, auth) = structure_access!(map_access, Init);
+        Ok(Init {
+            client,
+            auth,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{from_bytes, to_bytes};
+    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
 
     const BYTES: &[u8] = &[
         0xB2, 0x01, 0x8C, 0x4D, 0x79, 0x43, 0x6C, 0x69, 0x65, 0x6E, 0x74, 0x2F, 0x31, 0x2E, 0x30,
@@ -119,24 +109,18 @@ mod tests {
     #[test]
     fn serialize() {
         let value = Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned());
-        let result = to_bytes(&value);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        test::ser(&value, BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Init>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned())
-        );
+        let value = Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned());
+        test::de(&value, BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Init>(&BYTES[0..(BYTES.len() - 1)]);
-        assert!(result.is_err());
+        test::de_err::<Init>(&BYTES[0..(BYTES.len() - 1)]);
+        test::de_err::<Init>(&[TINY_STRUCT, Init::SIG + 1]);
     }
 }

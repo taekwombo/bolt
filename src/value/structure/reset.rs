@@ -1,4 +1,5 @@
-use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
+use super::super::BoltStructure;
+use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
@@ -12,13 +13,21 @@ const MSG_RESET_SERIALIZE_LENGTH: usize = serialize_length!(MSG_RESET_SIGNATURE,
 #[derive(Debug, PartialEq)]
 pub struct Reset;
 
+impl BoltStructure for Reset {
+    const SIG: u8 = 0x0F;
+    const LEN: u8 = 0x00;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = Vec<()>;
+}
+
 impl ser::Serialize for Reset {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         serializer
-            .serialize_tuple_struct(STRUCTURE_NAME, MSG_RESET_SERIALIZE_LENGTH)?
+            .serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?
             .end()
     }
 }
@@ -38,53 +47,38 @@ impl<'de> de::Visitor<'de> for ResetVisitor {
     type Value = Reset;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Reset message")
+        formatter.write_str("Reset")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_RESET_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                    fields(),
-                    key(),
-                });
-                Ok(Reset)
-            }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
+        structure_access!(map_access, Reset, fields(0));
+        Ok(Reset)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
 
-    const BYTES: &[u8] = &[TINY_STRUCT, MSG_RESET_SIGNATURE];
+    const BYTES: &[u8] = &[TINY_STRUCT, Reset::SIG];
 
     #[test]
     fn serialize() {
-        let result = to_bytes(&Reset);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        test::ser(&Reset, BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Reset>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Reset);
+        test::de(&Reset, BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Reset>(&[TINY_STRUCT, MSG_RESET_SIGNATURE + 1]);
-        assert!(result.is_err());
+        test::de_err::<Reset>(&[TINY_STRUCT, Reset::SIG + 1]);
+        test::de_err::<Reset>(&[TINY_STRUCT, Reset::SIG, 0]);
     }
 }

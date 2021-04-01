@@ -7,6 +7,14 @@ use serde_bytes::ByteBuf;
 use std::collections::HashMap;
 use std::fmt;
 
+trait BoltStructure {
+    const SIG: u8;
+    const LEN: u8;
+    const SERIALIZE_LEN: usize;
+
+    type Fields;
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Value {
     Null,

@@ -56,24 +56,23 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
         V: de::MapAccess<'de>,
     {
         match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_NODE_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                });
-                let fields: (i64, Vec<String>, HashMap<String, Value>) = map_access.next_value()?;
-                access_check!(map_access, {
-                    key(),
-                });
-                Ok(Node {
-                    identity: fields.0,
-                    labels: fields.1,
-                    properties: fields.2,
-                })
-            }
+            Some(key) if key == STRUCTURE_SIG_KEY => { }
             Some(key) => unexpected_key_access!(key),
             None => unexpected_key_access!(),
         }
+        access_check!(map_access, {
+            signature(MSG_NODE_SIGNATURE),
+            key(STRUCTURE_FIELDS_KEY),
+        });
+        let fields: (i64, Vec<String>, HashMap<String, Value>) = map_access.next_value()?;
+        access_check!(map_access, {
+            key(),
+        });
+        Ok(Node {
+            identity: fields.0,
+            labels: fields.1,
+            properties: fields.2,
+        })
     }
 }
 
