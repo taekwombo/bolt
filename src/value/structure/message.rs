@@ -11,6 +11,7 @@ mod success;
 
 pub use ack_failure::AckFailure;
 pub use discard_all::DiscardAll;
+pub use failure::Failure;
 pub use ignored::Ignored;
 pub use init::Init;
 pub use pull_all::PullAll;

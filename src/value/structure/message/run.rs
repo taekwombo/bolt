@@ -13,13 +13,13 @@ const MSG_RUN_SIGNATURE: u8 = 0x10;
 const MSG_RUN_SERIALIZE_LENGTH: usize = serialize_length!(MSG_RUN_SIGNATURE, MSG_RUN_LENGTH);
 
 #[derive(Debug, PartialEq)]
-pub struct Run<'a> {
-    statement: &'a str,
-    parameters: HashMap<&'a str, Value>,
+pub struct Run {
+    statement: String,
+    parameters: HashMap<String, Value>,
 }
 
-impl<'a> Run<'a> {
-    fn new(statement: &'a str, parameters: HashMap<&'a str, Value>) -> Self {
+impl Run {
+    fn new(statement: String, parameters: HashMap<String, Value>) -> Self {
         Self {
             statement,
             parameters,
@@ -27,7 +27,7 @@ impl<'a> Run<'a> {
     }
 }
 
-impl<'a> ser::Serialize for Run<'a> {
+impl<'a> ser::Serialize for Run {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -40,7 +40,7 @@ impl<'a> ser::Serialize for Run<'a> {
     }
 }
 
-impl<'de> de::Deserialize<'de> for Run<'de> {
+impl<'de> de::Deserialize<'de> for Run {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
@@ -52,7 +52,7 @@ impl<'de> de::Deserialize<'de> for Run<'de> {
 struct RunVisitor;
 
 impl<'de> de::Visitor<'de> for RunVisitor {
-    type Value = Run<'de>;
+    type Value = Run;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("Run message")
@@ -68,7 +68,7 @@ impl<'de> de::Visitor<'de> for RunVisitor {
                     signature(MSG_RUN_SIGNATURE),
                     key(STRUCTURE_FIELDS_KEY),
                 });
-                let fields: (&str, HashMap<&str, Value>) = map_access.next_value()?;
+                let fields: (String, HashMap<String, Value>) = map_access.next_value()?;
                 access_check!(map_access, {
                     key(),
                 });
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let value = Run::new(STATEMENT, HashMap::new());
+        let value = Run::new(STATEMENT.to_owned(), HashMap::new());
         let result = to_bytes(&value);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), BYTES);
@@ -105,14 +105,17 @@ mod tests {
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Run<'_>>(BYTES);
+        let result = from_bytes::<Run>(BYTES);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Run::new(STATEMENT, HashMap::new()));
+        assert_eq!(
+            result.unwrap(),
+            Run::new(STATEMENT.to_owned(), HashMap::new())
+        );
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Run<'_>>(&BYTES[0..(BYTES.len() - 1)]);
+        let result = from_bytes::<Run>(&BYTES[0..(BYTES.len() - 1)]);
         assert!(result.is_err());
     }
 }

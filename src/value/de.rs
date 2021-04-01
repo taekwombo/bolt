@@ -113,7 +113,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
                 }
                 Ok(Value::Map(map))
             }
-            // TODO: Why does this produce empty map??
+            // TODO(@krnik): Why does this produce empty map??
             None => Ok(Self::Value::Map(HashMap::new())),
         }
     }
@@ -335,6 +335,7 @@ impl<'de> de::Deserializer<'de> for Value {
     where
         V: de::Visitor<'de>,
     {
+        // TODO(@krnik): Should it compare tuple size with Value::List size?
         self.deserialize_seq(visitor)
     }
 
@@ -347,6 +348,7 @@ impl<'de> de::Deserializer<'de> for Value {
     where
         V: de::Visitor<'de>,
     {
+        // TODO(@krnik): Should it compare tuple size with Value::List size?
         self.deserialize_seq(visitor)
     }
 

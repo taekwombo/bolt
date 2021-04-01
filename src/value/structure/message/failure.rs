@@ -14,7 +14,7 @@ const MSG_FAILURE_SERIALIZE_LENGTH: usize =
     serialize_length!(MSG_FAILURE_SIGNATURE, MSG_FAILURE_LENGTH);
 
 #[derive(Debug, PartialEq)]
-struct Failure {
+pub struct Failure {
     metadata: HashMap<String, Value>,
 }
 

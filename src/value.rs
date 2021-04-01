@@ -1,5 +1,6 @@
 mod de;
 mod ser;
+mod structure;
 pub use de::from_value;
 
 use serde_bytes::ByteBuf;

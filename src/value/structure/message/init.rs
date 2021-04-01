@@ -11,13 +11,13 @@ const MSG_INIT_SIGNATURE: u8 = 0x01;
 const MSG_INIT_SERIALIZE_LENGTH: usize = serialize_length!(MSG_INIT_SIGNATURE, MSG_INIT_LENGTH);
 
 #[derive(Debug, PartialEq)]
-pub struct Init<'a> {
-    client: &'a str,
-    auth: BasicAuth<'a>,
+pub struct Init {
+    client: String,
+    auth: BasicAuth,
 }
 
-impl<'a> Init<'a> {
-    pub fn new(client: &'a str, user: &'a str, password: &'a str) -> Self {
+impl Init {
+    pub fn new(client: String, user: String, password: String) -> Self {
         Self {
             client,
             auth: BasicAuth::new(user, password),
@@ -26,23 +26,23 @@ impl<'a> Init<'a> {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
-struct BasicAuth<'a> {
-    scheme: &'a str,
-    principal: &'a str,
-    credentials: &'a str,
+struct BasicAuth {
+    scheme: String,
+    principal: String,
+    credentials: String,
 }
 
-impl<'a> BasicAuth<'a> {
-    pub fn new(user: &'a str, password: &'a str) -> Self {
+impl BasicAuth {
+    pub fn new(user: String, password: String) -> Self {
         Self {
-            scheme: "basic",
+            scheme: String::from("basic"),
             principal: user,
             credentials: password,
         }
     }
 }
 
-impl<'a> ser::Serialize for Init<'a> {
+impl<'a> ser::Serialize for Init {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -55,7 +55,7 @@ impl<'a> ser::Serialize for Init<'a> {
     }
 }
 
-impl<'de> de::Deserialize<'de> for Init<'de> {
+impl<'de> de::Deserialize<'de> for Init {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
@@ -67,7 +67,7 @@ impl<'de> de::Deserialize<'de> for Init<'de> {
 struct InitVisitor;
 
 impl<'de> de::Visitor<'de> for InitVisitor {
-    type Value = Init<'de>;
+    type Value = Init;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("Init message")
@@ -84,7 +84,7 @@ impl<'de> de::Visitor<'de> for InitVisitor {
                     key(STRUCTURE_FIELDS_KEY),
                 });
 
-                let fields: (&str, BasicAuth) = map_access.next_value()?;
+                let fields: (String, BasicAuth) = map_access.next_value()?;
                 access_check!(map_access, {
                     key(),
                 });
@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let value = Init::new(CLIENT_NAME, USER, PASSWORD);
+        let value = Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned());
         let result = to_bytes(&value);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), BYTES);
@@ -126,14 +126,17 @@ mod tests {
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Init<'_>>(BYTES);
+        let result = from_bytes::<Init>(BYTES);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Init::new(CLIENT_NAME, USER, PASSWORD));
+        assert_eq!(
+            result.unwrap(),
+            Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned())
+        );
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Init<'_>>(&BYTES[0..(BYTES.len() - 1)]);
+        let result = from_bytes::<Init>(&BYTES[0..(BYTES.len() - 1)]);
         assert!(result.is_err());
     }
 }
