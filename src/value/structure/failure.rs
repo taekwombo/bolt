@@ -16,6 +16,11 @@ impl BoltStructure for Failure {
     const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
+    // TODO(@krnik): Implement one-elemnt list type like e.g. AsList<T>(T)
+    // which will be used to deserialize one-element structure fields
+    // more ergonomically. Also it will greatly simplify structure_access
+    // macro code.
+    // Consider: Error handling clarity.
     type Fields = Vec<HashMap<String, Value>>;
 }
 

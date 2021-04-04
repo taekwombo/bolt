@@ -1,5 +1,4 @@
-//use super::Value;
-//use crate::constants::STRUCTURE_NAME;
+use crate::constants::STRUCTURE_NAME;
 
 //mod de;
 //mod ser;
@@ -16,6 +15,7 @@ mod record;
 mod relationship;
 mod reset;
 mod run;
+mod simple;
 mod success;
 mod unbound_relationship;
 
@@ -35,20 +35,20 @@ use success::Success;
 use unbound_relationship::UnboundRelationship;
 
 pub enum Structure {
-//    Node(Node),
-//    Path(Path),
-//    Relationship(Relationship),
-//    UnboundRelationship(UnboundRelationship),
-//    AckFailure(AckFailure),
-//    DiscardAll(DiscardAll),
-//    Failure(Failure),
-//    Ignored(Ignored),
-//    Init(Init),
-//    PullAll(PullAll),
-//    Record(Record),
-//    Reset(Reset),
-//    Run(Run),
-//    Success(Success),
-//    TODO(@krnik): Is this variant necessary?
-//    Custom { signature: u8, fields: Vec<Value> },
+    Node(Node),
+    Path(Path),
+    Relationship(Relationship),
+    UnboundRelationship(UnboundRelationship),
+    AckFailure(AckFailure),
+    DiscardAll(DiscardAll),
+    Failure(Failure),
+    Ignored(Ignored),
+    Init(Init),
+    PullAll(PullAll),
+    Record(Record),
+    Reset(Reset),
+    Run(Run),
+    Success(Success),
+    //    TODO(@krnik): Is this variant necessary?
+    //    Custom { signature: u8, fields: Vec<Value> },
 }

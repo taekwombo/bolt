@@ -52,11 +52,14 @@ impl Default for Value {
     }
 }
 
+// TODO(@krnik): Value should deserialize and serialize into bytes.
+// Value should deserialize and/or serialize into any T: Deserialize and/or Serialize
 #[cfg(test)]
 mod tests {
     use super::Value;
     use crate::constants::marker::*;
     use serde_bytes::ByteBuf;
+    use serde_derive::{Deserialize, Serialize};
     use std::collections::HashMap;
 
     fn buf(capacity: usize) -> ByteBuf {
@@ -131,16 +134,16 @@ mod tests {
     #[test]
     #[allow(clippy::let_and_return)]
     fn structure_into_map() {
-        #[derive(Debug, serde_derive::Serialize, serde_derive::Deserialize)]
+        #[derive(Debug, Serialize, Deserialize)]
         struct S {
             signature: u8,
             fields: Vec<Value>,
         }
 
-        let m: S = crate::from_value(structure()).unwrap();
-        println!("{:?}", m);
+        let result1 = crate::from_value::<S>(structure());
+        assert!(result1.is_ok());
 
-        let m: HashMap<String, Value> = crate::from_value(Value::Map(map! {})).unwrap();
-        println!("{:?}", m);
+        let result2 = crate::from_value::<HashMap<String, Value>>(Value::Map(map! {}));
+        assert!(result2.is_ok());
     }
 }

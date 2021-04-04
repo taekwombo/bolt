@@ -2,9 +2,9 @@
 macro_rules! structure_access {
     ($map_access:ident, $structure:ident, no_sig_key $( $tail:tt )*) => {
         {
-            check!(__key, $map_access, crate::constants::STRUCTURE_FIELDS_KEY);
+            check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
-            let __fields = $map_access.next_value::<<$structure as crate::value::BoltStructure>::Fields>()?;
+            let __fields = $map_access.next_value::<<$structure as $crate::value::BoltStructure>::Fields>()?;
 
             check!($($tail)*, __fields);
             check!(__key, $map_access);
@@ -14,11 +14,11 @@ macro_rules! structure_access {
     };
     ($map_access:ident, $structure:ident $( $tail:tt )*) => {
         {
-            check!(__key, $map_access, crate::constants::STRUCTURE_SIG_KEY);
+            check!(__key, $map_access, $crate::constants::STRUCTURE_SIG_KEY);
             check!(__sig, $map_access, $structure::SIG);
-            check!(__key, $map_access, crate::constants::STRUCTURE_FIELDS_KEY);
+            check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
-            let __fields = $map_access.next_value::<<$structure as crate::value::BoltStructure>::Fields>()?;
+            let __fields = $map_access.next_value::<<$structure as $crate::value::BoltStructure>::Fields>()?;
 
             check!($($tail)*, __fields);
             check!(__key, $map_access);
@@ -40,9 +40,8 @@ macro_rules! check {
     };
     (__key, $map_access:ident) => {
         {
-            match $map_access.next_key::<&str>()? {
-                Some(__key) => unexpected_key_access!(__key, "to be None"),
-                None => (),
+            if let Some(__key) = $map_access.next_key::<&str>()? {
+                unexpected_key_access!(__key, "to be None");
             }
         }
     };
