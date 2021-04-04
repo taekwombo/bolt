@@ -11,14 +11,6 @@ pub struct Failure {
     metadata: HashMap<String, Value>,
 }
 
-impl Failure {
-    fn empty() -> Self {
-        Self {
-            metadata: HashMap::new(),
-        }
-    }
-}
-
 impl BoltStructure for Failure {
     const SIG: u8 = 0x7F;
     const LEN: u8 = 0x01;
@@ -63,7 +55,7 @@ impl<'de> de::Visitor<'de> for FailureVisitor {
     {
         let mut fields = structure_access!(map_access, Failure, fields(1));
         Ok(Failure {
-            metadata: fields.pop().expect("Fields to have one element")
+            metadata: fields.pop().expect("Fields to have one element"),
         })
     }
 }
@@ -78,14 +70,20 @@ mod test_failure {
 
     const BYTES: &[u8] = &[TINY_STRUCT + 1, Failure::SIG, TINY_MAP];
 
+    fn create_failure() -> Failure {
+        Failure {
+            metadata: HashMap::new(),
+        }
+    }
+
     #[test]
     fn serialize() {
-        test::ser(&Failure::empty(), BYTES);
+        test::ser(&create_failure(), BYTES);
     }
 
     #[test]
     fn deserialize() {
-        test::de(&Failure::empty(), BYTES);
+        test::de(&create_failure(), BYTES);
     }
 
     #[test]

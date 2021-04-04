@@ -58,7 +58,10 @@ impl<'de> de::Visitor<'de> for AckFailureVisitor {
 #[cfg(test)]
 mod test_ack_failure {
     use super::*;
-    use crate::{constants::marker::{TINY_STRUCT, NULL}, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{NULL, TINY_STRUCT},
+        from_bytes, test, to_bytes,
+    };
 
     const BYTES: &[u8] = &[TINY_STRUCT, AckFailure::SIG];
 

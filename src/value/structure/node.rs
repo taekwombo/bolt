@@ -1,16 +1,10 @@
-use crate::{
-    constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY},
-    Value,
-};
+use super::super::BoltStructure;
+use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
-
-const MSG_NODE_SIGNATURE: u8 = 0x4E;
-const MSG_NODE_LENGTH: u8 = 0x03;
-const MSG_NODE_SERIALIZE_LENGTH: usize = serialize_length!(MSG_NODE_SIGNATURE, MSG_NODE_LENGTH);
 
 #[derive(Debug, PartialEq)]
 pub struct Node {
@@ -19,13 +13,21 @@ pub struct Node {
     pub properties: HashMap<String, Value>,
 }
 
+impl BoltStructure for Node {
+    const SIG: u8 = 0x4E;
+    const LEN: u8 = 0x03;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = (i64, Vec<String>, HashMap<String, Value>);
+}
+
 impl ser::Serialize for Node {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, MSG_NODE_SERIALIZE_LENGTH)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
         ts_serializer.serialize_field(&self.identity)?;
         ts_serializer.serialize_field(&self.labels)?;
         ts_serializer.serialize_field(&self.properties)?;
@@ -48,69 +50,50 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
     type Value = Node;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Node type")
+        formatter.write_str("Node")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => { }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
-        access_check!(map_access, {
-            signature(MSG_NODE_SIGNATURE),
-            key(STRUCTURE_FIELDS_KEY),
-        });
-        let fields: (i64, Vec<String>, HashMap<String, Value>) = map_access.next_value()?;
-        access_check!(map_access, {
-            key(),
-        });
+        let (identity, labels, properties) = structure_access!(map_access, Node);
         Ok(Node {
-            identity: fields.0,
-            labels: fields.1,
-            properties: fields.2,
+            identity,
+            labels,
+            properties,
         })
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test_node {
     use super::*;
-    use crate::{from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
     const BYTES: &[u8] = &[179, 78, 100, 145, 132, 110, 111, 100, 101, 160];
 
-    #[test]
-    fn serialize() {
-        let result = to_bytes(&Node {
+    fn create_node() -> Node {
+        Node {
             identity: 100,
             labels: vec![String::from("node")],
             properties: HashMap::new(),
-        });
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        }
+    }
+
+    #[test]
+    fn serialize() {
+        test::ser(&create_node(), BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Node>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Node {
-                identity: 100,
-                labels: vec![String::from("node")],
-                properties: HashMap::new(),
-            }
-        );
+        test::de(&create_node(), BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Node>(&BYTES[0..(BYTES.len() - 1)]);
-        assert!(result.is_err());
+        test::de_err::<Node>(&BYTES[0..(BYTES.len() - 1)]);
+        test::de_err::<Node>(&[TINY_STRUCT, Node::SIG + 1]);
     }
 }

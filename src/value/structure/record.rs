@@ -1,27 +1,22 @@
-use crate::{
-    constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY},
-    Value,
-};
+use super::super::BoltStructure;
+use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
 };
 use std::fmt;
 
-const MSG_RECORD_SIGNATURE: u8 = 0x71;
-const MSG_RECORD_LENGTH: u8 = 0x01;
-const MSG_RECORD_SERIALIZE_LENGTH: usize =
-    serialize_length!(MSG_RECORD_SIGNATURE, MSG_RECORD_LENGTH);
-
 #[derive(Debug, PartialEq)]
 pub struct Record {
     fields: Vec<Value>,
 }
 
-impl Record {
-    fn new(fields: Vec<Value>) -> Self {
-        Self { fields }
-    }
+impl BoltStructure for Record {
+    const SIG: u8 = 0x71;
+    const LEN: u8 = 0x01;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = Vec<Vec<Value>>;
 }
 
 impl ser::Serialize for Record {
@@ -30,7 +25,7 @@ impl ser::Serialize for Record {
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, MSG_RECORD_SERIALIZE_LENGTH)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
         ts_serializer.serialize_field(&self.fields)?;
         ts_serializer.end()
     }
@@ -51,68 +46,48 @@ impl<'de> de::Visitor<'de> for RecordVisitor {
     type Value = Record;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Record message")
+        formatter.write_str("Record")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_RECORD_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                });
-                let mut fields: Vec<Vec<Value>> = map_access.next_value()?;
-                if fields.len() != MSG_RECORD_LENGTH as usize {
-                    return Err(<V::Error as ::serde::de::Error>::custom(format!(
-                        "Expected fields length to be equal {}. Got {} instead.",
-                        MSG_RECORD_LENGTH,
-                        fields.len(),
-                    )));
-                }
-                let fields = fields.pop().expect("Field element to exist");
-                access_check!(map_access, {
-                    key(),
-                });
-                Ok(Record { fields })
-            }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
+        let mut fields = structure_access!(map_access, Record, fields(1));
+        Ok(Record {
+            // TODO(@krnik): Instead of panic send the error to the consumer
+            fields: fields.pop().expect("Fields to have one element"),
+        })
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test_record {
     use super::*;
-    use crate::{from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
-    const BYTES: &[u8] = &[0x0B1, 0x071, 0x093, 0x001, 0x002, 0x003];
+    const BYTES: &[u8] = &[0xB1, 0x71, 0x93, 0x01, 0x02, 0x03];
 
-    fn get_fields() -> Vec<Value> {
-        vec![Value::I64(1), Value::I64(2), Value::I64(3)]
+    fn get_record() -> Record {
+        Record {
+            fields: vec![Value::I64(1), Value::I64(2), Value::I64(3)],
+        }
     }
 
     #[test]
     fn serialize() {
-        let value = Record::new(get_fields());
-        let result = to_bytes(&value);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        test::ser(&get_record(), BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Record>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Record::new(get_fields()));
+        test::de(&get_record(), BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Record>(&BYTES[0..(BYTES.len() - 1)]);
-        assert!(result.is_err());
+        test::de_err::<Record>(&BYTES[0..(BYTES.len() - 1)]);
+        test::de_err::<Record>(&[TINY_STRUCT, Record::SIG + 1]);
+        test::de_err::<Record>(&[TINY_STRUCT, Record::SIG, 0]);
     }
 }

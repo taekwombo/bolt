@@ -1,17 +1,10 @@
-use crate::{
-    constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY},
-    Value,
-};
+use super::super::BoltStructure;
+use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
-
-const MSG_RELATIONSHIP_SIGNATURE: u8 = 0x52;
-const MSG_RELATIONSHIP_LENGTH: u8 = 0x05;
-const MSG_RELATIONSHIP_SERIALIZE_LENGTH: usize =
-    serialize_length!(MSG_RELATIONSHIP_SIGNATURE, MSG_RELATIONSHIP_LENGTH);
 
 #[derive(Debug, PartialEq)]
 pub struct Relationship {
@@ -22,13 +15,21 @@ pub struct Relationship {
     pub properties: HashMap<String, Value>,
 }
 
+impl BoltStructure for Relationship {
+    const SIG: u8 = 0x52;
+    const LEN: u8 = 0x05;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = (i64, i64, i64, String, HashMap<String, Value>);
+}
+
 impl ser::Serialize for Relationship {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, MSG_RELATIONSHIP_SERIALIZE_LENGTH)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
         ts_serializer.serialize_field(&self.identity)?;
         ts_serializer.serialize_field(&self.start_node_identity)?;
         ts_serializer.serialize_field(&self.end_node_identity)?;
@@ -53,77 +54,55 @@ impl<'de> de::Visitor<'de> for RelationshipVisitor {
     type Value = Relationship;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Relationship type")
+        formatter.write_str("Relationship")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_RELATIONSHIP_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                });
-                let fields: (i64, i64, i64, String, HashMap<String, Value>) =
-                    map_access.next_value()?;
-                access_check!(map_access, {
-                    key(),
-                });
-                Ok(Relationship {
-                    identity: fields.0,
-                    start_node_identity: fields.1,
-                    end_node_identity: fields.2,
-                    r#type: fields.3,
-                    properties: fields.4,
-                })
-            }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
+        let (identity, start_node_identity, end_node_identity, r#type, properties) =
+            structure_access!(map_access, Relationship);
+
+        Ok(Relationship {
+            identity,
+            start_node_identity,
+            end_node_identity,
+            r#type,
+            properties,
+        })
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test_relationship {
     use super::*;
-    use crate::{from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
     const BYTES: &[u8] = &[181, 82, 100, 101, 102, 132, 110, 111, 100, 101, 160];
 
-    #[test]
-    fn serialize() {
-        let result = to_bytes(&Relationship {
+    fn create_relationship() -> Relationship {
+        Relationship {
             identity: 100,
             start_node_identity: 101,
             end_node_identity: 102,
             r#type: String::from("node"),
             properties: HashMap::new(),
-        });
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        }
+    }
+    #[test]
+    fn serialize() {
+        test::ser(&create_relationship(), BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Relationship>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Relationship {
-                identity: 100,
-                start_node_identity: 101,
-                end_node_identity: 102,
-                r#type: String::from("node"),
-                properties: HashMap::new(),
-            }
-        );
+        test::de(&create_relationship(), BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Relationship>(&BYTES[0..(BYTES.len() - 1)]);
-        assert!(result.is_err());
+        test::de_err::<Relationship>(&BYTES[0..(BYTES.len() - 1)]);
+        test::de_err::<Relationship>(&[TINY_STRUCT, Relationship::SIG + 1]);
     }
 }

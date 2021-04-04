@@ -1,14 +1,11 @@
+use super::super::BoltStructure;
 use super::{Node, UnboundRelationship};
-use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_NAME, STRUCTURE_SIG_KEY};
+use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
     ser::{self, SerializeTupleStruct},
 };
 use std::fmt;
-
-const MSG_PATH_SIGNATURE: u8 = 0x50;
-const MSG_PATH_LEGNTH: u8 = 0x03;
-const MSG_PATH_SERIALIZE_LENGTH: usize = serialize_length!(MSG_PATH_SIGNATURE, MSG_PATH_LEGNTH);
 
 #[derive(Debug, PartialEq)]
 pub struct Path {
@@ -17,13 +14,21 @@ pub struct Path {
     pub sequence: Vec<i64>,
 }
 
+impl BoltStructure for Path {
+    const SIG: u8 = 0x50;
+    const LEN: u8 = 0x03;
+    const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
+
+    type Fields = (Vec<Node>, Vec<UnboundRelationship>, Vec<i64>);
+}
+
 impl ser::Serialize for Path {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, MSG_PATH_SERIALIZE_LENGTH)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
         ts_serializer.serialize_field(&self.nodes)?;
         ts_serializer.serialize_field(&self.relationships)?;
         ts_serializer.serialize_field(&self.sequence)?;
@@ -46,40 +51,26 @@ impl<'de> de::Visitor<'de> for PathVisitor {
     type Value = Path;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Path type")
+        formatter.write_str("Path")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        match map_access.next_key::<&str>()? {
-            Some(key) if key == STRUCTURE_SIG_KEY => {
-                access_check!(map_access, {
-                    signature(MSG_PATH_SIGNATURE),
-                    key(STRUCTURE_FIELDS_KEY),
-                });
-                let fields: (Vec<Node>, Vec<UnboundRelationship>, Vec<i64>) =
-                    map_access.next_value()?;
-                access_check!(map_access, {
-                    key(),
-                });
-                Ok(Path {
-                    nodes: fields.0,
-                    relationships: fields.1,
-                    sequence: fields.2,
-                })
-            }
-            Some(key) => unexpected_key_access!(key),
-            None => unexpected_key_access!(),
-        }
+        let (nodes, relationships, sequence) = structure_access!(map_access, Path);
+        Ok(Path {
+            nodes,
+            relationships,
+            sequence,
+        })
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test_path {
     use super::*;
-    use crate::{from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
     use std::collections::HashMap;
 
     const BYTES: &[u8] = &[
@@ -87,7 +78,7 @@ mod tests {
         84, 121, 112, 101, 160, 145, 100,
     ];
 
-    fn get_path() -> Path {
+    fn create_path() -> Path {
         Path {
             nodes: vec![Node {
                 identity: 1,
@@ -105,21 +96,17 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let result = to_bytes(&get_path());
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), BYTES);
+        test::ser(&create_path(), BYTES);
     }
 
     #[test]
     fn deserialize() {
-        let result = from_bytes::<Path>(BYTES);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), get_path());
+        test::de(&create_path(), BYTES);
     }
 
     #[test]
     fn deserialize_fail() {
-        let result = from_bytes::<Path>(&BYTES[0..(BYTES.len() - 1)]);
-        assert!(result.is_err());
+        test::de_err::<Path>(&BYTES[0..(BYTES.len() - 1)]);
+        test::de_err::<Path>(&[TINY_STRUCT, Path::SIG + 1]);
     }
 }

@@ -82,17 +82,14 @@ impl<'de> de::Visitor<'de> for InitVisitor {
         V: de::MapAccess<'de>,
     {
         let (client, auth) = structure_access!(map_access, Init);
-        Ok(Init {
-            client,
-            auth,
-        })
+        Ok(Init { client, auth })
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test_init {
     use super::*;
-    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
     const BYTES: &[u8] = &[
         0xB2, 0x01, 0x8C, 0x4D, 0x79, 0x43, 0x6C, 0x69, 0x65, 0x6E, 0x74, 0x2F, 0x31, 0x2E, 0x30,

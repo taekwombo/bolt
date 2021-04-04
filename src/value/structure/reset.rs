@@ -6,10 +6,6 @@ use serde::{
 };
 use std::fmt;
 
-const MSG_RESET_SIGNATURE: u8 = 0x0F;
-const MSG_RESET_LENGTH: u8 = 0x00;
-const MSG_RESET_SERIALIZE_LENGTH: usize = serialize_length!(MSG_RESET_SIGNATURE, MSG_RESET_LENGTH);
-
 #[derive(Debug, PartialEq)]
 pub struct Reset;
 
@@ -60,9 +56,9 @@ impl<'de> de::Visitor<'de> for ResetVisitor {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_reset {
     use super::*;
-    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
     const BYTES: &[u8] = &[TINY_STRUCT, Reset::SIG];
 

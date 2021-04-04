@@ -56,15 +56,15 @@ impl<'de> de::Visitor<'de> for PullAllVisitor {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_pull_all {
     use super::*;
-    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
     const BYTES: &[u8] = &[TINY_STRUCT, PullAll::SIG];
 
     #[test]
     fn serialize() {
-        test::ser(&PullAll, BYTES); 
+        test::ser(&PullAll, BYTES);
     }
 
     #[test]

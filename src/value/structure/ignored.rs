@@ -6,11 +6,6 @@ use serde::{
 };
 use std::fmt;
 
-const MSG_IGNORED_SIGNATURE: u8 = 0x7E;
-const MSG_IGNORED_LENGTH: u8 = 0x00;
-const MSG_IGNORED_SERIALIZE_LENGTH: usize =
-    serialize_length!(MSG_IGNORED_SIGNATURE, MSG_IGNORED_LENGTH);
-
 #[derive(Debug, PartialEq)]
 pub struct Ignored;
 
@@ -61,9 +56,9 @@ impl<'de> de::Visitor<'de> for IgnoredVisitor {
 }
 
 #[cfg(test)]
-mod ignored_test {
+mod test_ignored {
     use super::*;
-    use crate::{test, constants::marker::TINY_STRUCT, from_bytes, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
     const BYTES: &[u8] = &[TINY_STRUCT, Ignored::SIG];
 
