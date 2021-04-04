@@ -96,13 +96,9 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
         match map_access.next_key::<&str>()? {
             Some(key) if key == STRUCTURE_SIG_KEY => {
                 let signature: u8 = map_access.next_value::<u8>()?;
-                access_check!(map_access, {
-                    key(STRUCTURE_FIELDS_KEY),
-                });
+                check!(__key, map_access, STRUCTURE_FIELDS_KEY);
                 let fields: Vec<Value> = map_access.next_value()?;
-                access_check!(map_access, {
-                    key(),
-                });
+                check!(__key, map_access);
                 Ok(Self::Value::Structure { signature, fields })
             }
             Some(key) => {
