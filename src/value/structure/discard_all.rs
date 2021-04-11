@@ -64,23 +64,17 @@ impl<'de> de::Visitor<'de> for DiscardAllVisitor {
 #[cfg(test)]
 mod test_discard_all {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, test};
 
-    const BYTES: &[u8] = &[TINY_STRUCT, DiscardAll::SIG];
-
-    #[test]
-    fn serialize() {
-        test::ser(&DiscardAll, BYTES);
-    }
+    const BYTES: &[u8] = &[TINY_STRUCT + DiscardAll::LEN, DiscardAll::SIG];
 
     #[test]
-    fn deserialize() {
-        test::de(&DiscardAll, BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
-        test::de_err::<DiscardAll>(&[TINY_STRUCT, DiscardAll::SIG, DiscardAll::LEN]);
+    fn bytes() {
+        test::ser_de::<DiscardAll>(BYTES);
+        test::de_ser(DiscardAll);
         test::de_err::<DiscardAll>(&[TINY_STRUCT, DiscardAll::SIG + 1]);
     }
+
+    #[test]
+    fn bytes_fail() {}
 }

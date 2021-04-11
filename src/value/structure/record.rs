@@ -8,7 +8,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Record {
-    fields: Vec<Value>,
+    pub fields: Vec<Value>,
 }
 
 impl BoltStructure for Record {
@@ -61,7 +61,6 @@ impl<'de> de::Visitor<'de> for RecordVisitor {
     {
         let fields = structure_access!(map_access, Record);
         Ok(Record {
-            // TODO(@krnik): Instead of panic send the error to the consumer
             fields: fields.value(),
         })
     }
@@ -70,30 +69,17 @@ impl<'de> de::Visitor<'de> for RecordVisitor {
 #[cfg(test)]
 mod test_record {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{TINY_LIST, TINY_STRUCT},
+        test,
+    };
 
-    const BYTES: &[u8] = &[0xB1, 0x71, 0x93, 0x01, 0x02, 0x03];
-
-    fn get_record() -> Record {
-        Record {
-            fields: vec![Value::I64(1), Value::I64(2), Value::I64(3)],
-        }
-    }
+    const BYTES: &[u8] = &[TINY_STRUCT + Record::LEN, Record::SIG, TINY_LIST + 1, 1];
 
     #[test]
-    fn serialize() {
-        test::ser(&get_record(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&get_record(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+    fn bytes() {
+        test::ser_de::<Record>(BYTES);
+        test::de_ser(Record { fields: Vec::new() });
         test::de_err::<Record>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Record>(&[TINY_STRUCT, Record::SIG + 1]);
-        test::de_err::<Record>(&[TINY_STRUCT, Record::SIG, 0]);
     }
 }

@@ -64,23 +64,14 @@ impl<'de> de::Visitor<'de> for ResetVisitor {
 #[cfg(test)]
 mod test_reset {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, test};
 
-    const BYTES: &[u8] = &[TINY_STRUCT, Reset::SIG];
-
-    #[test]
-    fn serialize() {
-        test::ser(&Reset, BYTES);
-    }
+    const BYTES: &[u8] = &[TINY_STRUCT + Reset::LEN, Reset::SIG];
 
     #[test]
-    fn deserialize() {
-        test::de(&Reset, BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+    fn bytes() {
+        test::ser_de::<Reset>(BYTES);
+        test::de_ser(Reset);
         test::de_err::<Reset>(&[TINY_STRUCT, Reset::SIG + 1]);
-        test::de_err::<Reset>(&[TINY_STRUCT, Reset::SIG, 0]);
     }
 }

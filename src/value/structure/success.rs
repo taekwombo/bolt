@@ -8,7 +8,7 @@ use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct Success {
-    metadata: HashMap<String, Value>,
+    pub metadata: HashMap<String, Value>,
 }
 
 impl BoltStructure for Success {
@@ -69,38 +69,19 @@ impl<'de> de::Visitor<'de> for SuccessVisitor {
 #[cfg(test)]
 mod test_success {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{TINY_MAP, TINY_STRUCT},
+        test,
+    };
 
-    const BYTES: &[u8] = &[
-        0xB1, 0x70, 0xA1, 0x86, 0x66, 0x69, 0x65, 0x6C, 0x64, 0x73, 0x92, 0x84, 0x6E, 0x61, 0x6D,
-        0x65, 0x83, 0x61, 0x67, 0x65,
-    ];
-
-    fn create_success() -> Success {
-        let mut metadata = HashMap::new();
-        metadata.insert(
-            String::from("fields"),
-            Value::List(vec![
-                Value::String(String::from("name")),
-                Value::String(String::from("age")),
-            ]),
-        );
-        Success { metadata }
-    }
+    const BYTES: &[u8] = &[TINY_STRUCT + Success::LEN, Success::SIG, TINY_MAP];
 
     #[test]
-    fn serialize() {
-        test::ser(&create_success(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_success(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+    fn bytes() {
+        test::ser_de::<Success>(BYTES);
+        test::de_ser(Success {
+            metadata: HashMap::new(),
+        });
         test::de_err::<Success>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Success>(&[TINY_STRUCT, Success::SIG + 1]);
     }
 }

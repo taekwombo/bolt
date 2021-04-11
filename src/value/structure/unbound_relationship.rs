@@ -14,7 +14,7 @@ pub struct UnboundRelationship {
 }
 
 impl BoltStructure for UnboundRelationship {
-    const SIG: u8 = 0x52;
+    const SIG: u8 = 0x72;
     const LEN: u8 = 0x03;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
@@ -79,31 +79,27 @@ impl<'de> de::Visitor<'de> for UnboundRelationshipVisitor {
 #[cfg(test)]
 mod test_unbound_relationship {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
+        test,
+    };
 
-    const BYTES: &[u8] = &[179, 82, 100, 132, 110, 111, 100, 101, 160];
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + UnboundRelationship::LEN,
+        UnboundRelationship::SIG,
+        0,
+        TINY_STRING,
+        TINY_MAP,
+    ];
 
-    fn create_unbound_relationship() -> UnboundRelationship {
-        UnboundRelationship {
-            identity: 100,
-            r#type: String::from("node"),
+    #[test]
+    fn bytes() {
+        test::ser_de::<UnboundRelationship>(BYTES);
+        test::de_ser(UnboundRelationship {
+            identity: 0,
+            r#type: String::new(),
             properties: HashMap::new(),
-        }
-    }
-
-    #[test]
-    fn serialize() {
-        test::ser(&create_unbound_relationship(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_unbound_relationship(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+        });
         test::de_err::<UnboundRelationship>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<UnboundRelationship>(&[TINY_STRUCT, UnboundRelationship::SIG + 1]);
     }
 }

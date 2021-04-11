@@ -8,7 +8,7 @@ use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct Failure {
-    metadata: HashMap<String, Value>,
+    pub metadata: HashMap<String, Value>,
 }
 
 impl fmt::Display for Failure {
@@ -22,11 +22,6 @@ impl BoltStructure for Failure {
     const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    // TODO(@krnik): Implement one-elemnt list type like e.g. AsList<T>(T)
-    // which will be used to deserialize one-element structure fields
-    // more ergonomically. Also it will greatly simplify structure_access
-    // macro code.
-    // Consider: Error handling clarity.
     type Fields = Single<HashMap<String, Value>>;
 }
 
@@ -76,30 +71,17 @@ mod test_failure {
     use super::*;
     use crate::{
         constants::marker::{TINY_MAP, TINY_STRUCT},
-        from_bytes, test, to_bytes,
+        test,
     };
 
-    const BYTES: &[u8] = &[TINY_STRUCT + 1, Failure::SIG, TINY_MAP];
+    const BYTES: &[u8] = &[TINY_STRUCT + Failure::LEN, Failure::SIG, TINY_MAP];
 
-    fn create_failure() -> Failure {
-        Failure {
+    #[test]
+    fn bytes() {
+        test::ser_de::<Failure>(BYTES);
+        test::de_ser(Failure {
             metadata: HashMap::new(),
-        }
-    }
-
-    #[test]
-    fn serializefailure() {
-        test::ser(&create_failure(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_failure(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
-        test::de_err::<Failure>(&[TINY_STRUCT, Failure::SIG]);
-        test::de_err::<Failure>(&[TINY_STRUCT, Failure::SIG + 1, TINY_MAP]);
+        });
+        test::de_err::<Failure>(&[TINY_STRUCT + 1, Failure::SIG + 1, TINY_MAP]);
     }
 }

@@ -4,12 +4,13 @@ use serde::{
     de,
     ser::{self, SerializeTupleStruct},
 };
+use serde_derive::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Init {
-    client: String,
-    auth: BasicAuth,
+    pub client: String,
+    pub auth: BasicAuth,
 }
 
 impl BoltStructure for Init {
@@ -31,15 +32,18 @@ impl Init {
 
 impl fmt::Display for Init {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Init").field(&self.client).field(&self.auth).finish()
+        f.debug_struct("Init")
+            .field("client", &self.client)
+            .field("auth", &self.auth)
+            .finish()
     }
 }
 
-#[derive(Debug, serde_derive::Deserialize, PartialEq, serde_derive::Serialize)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct BasicAuth {
-    scheme: String,
-    principal: String,
-    credentials: String,
+    pub scheme: String,
+    pub principal: String,
+    pub credentials: String,
 }
 
 impl BasicAuth {
@@ -52,11 +56,22 @@ impl BasicAuth {
     }
 }
 
+impl fmt::Debug for BasicAuth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BasicAuth")
+            .field("scheme", &self.scheme)
+            .field("principal", &self.principal)
+            .field("credentials", &"...")
+            .finish()
+    }
+}
+
 impl fmt::Display for BasicAuth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BasicAuth")
             .field("scheme", &self.scheme)
             .field("principal", &self.principal)
+            .field("credentials", &"...")
             .finish()
     }
 }
@@ -106,6 +121,7 @@ mod test_init {
     use super::*;
     use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
 
+    // https://boltprotocol.org/v1/#message-init
     const BYTES: &[u8] = &[
         0xB2, 0x01, 0x8C, 0x4D, 0x79, 0x43, 0x6C, 0x69, 0x65, 0x6E, 0x74, 0x2F, 0x31, 0x2E, 0x30,
         0xA3, 0x86, 0x73, 0x63, 0x68, 0x65, 0x6D, 0x65, 0x85, 0x62, 0x61, 0x73, 0x69, 0x63, 0x89,
@@ -114,25 +130,11 @@ mod test_init {
         0x63, 0x72, 0x65, 0x74,
     ];
 
-    const CLIENT_NAME: &str = "MyClient/1.0";
-    const USER: &str = "neo4j";
-    const PASSWORD: &str = "secret";
-
     #[test]
-    fn serialize() {
-        let value = Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned());
-        test::ser(&value, BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        let value = Init::new(CLIENT_NAME.to_owned(), USER.to_owned(), PASSWORD.to_owned());
-        test::de(&value, BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+    fn bytes() {
+        let s = String::from("test");
+        test::ser_de::<Init>(BYTES);
+        test::de_ser(Init::new(s.clone(), s.clone(), s.clone()));
         test::de_err::<Init>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Init>(&[TINY_STRUCT, Init::SIG + 1]);
     }
 }

@@ -1,5 +1,5 @@
 use super::constants::{STRUCTURE_FIELDS_KEY_B, STRUCTURE_SIG_KEY_B};
-use super::error::{SerdeError, ErrorCode, SerdeResult};
+use super::error::{ErrorCode, SerdeError, SerdeResult};
 use super::marker::Marker;
 use super::read::{ByteReader, Unpacker};
 use serde::de;
@@ -15,10 +15,10 @@ where
 }
 
 mod errors {
-    use super::{SerdeError, Marker};
+    use super::{Marker, SerdeError};
 
     pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> SerdeError {
-        SerdeError::create(format!("Expected {}, got {} instead.", expected, actual))
+        SerdeError::create(format!("Expected {}, got {} instead", expected, actual))
     }
 
     pub(super) fn invalid_length(kind: &str, expected: usize, actual: usize) -> SerdeError {
@@ -48,7 +48,7 @@ where
         if self.read.is_done() {
             Ok(())
         } else {
-            Err(SerdeError::create(SerdeError::UnexpectedTrailingBytes))
+            Err(SerdeError::create(ErrorCode::UnexpectedTrailingBytes))
         }
     }
 
@@ -610,140 +610,8 @@ where
                 Ok(seed.deserialize(&mut *self.de)?)
             }
             StructureAccessState::Done => Err(SerdeError::impl_err(
-                "StructureAccess value_seed cannot reach State::Done.",
+                "StructureAccess value_seed cannot reach State::Done",
             )),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::constants::marker::*;
-    use serde_bytes::{ByteBuf, Bytes};
-    use serde_derive::Deserialize;
-
-    macro_rules! assert_deserialize {
-        ($($t:ty => $arr:expr),* $(,)*) => {
-            $(assert!(from_bytes::<$t>(&$arr).map_err(|e| eprintln!("{}", e)).is_ok());)*
-        }
-    }
-
-    #[derive(Deserialize)]
-    struct NewType<T>(T);
-
-    #[derive(Deserialize)]
-    struct TupleStruct<T, Y>(T, Y);
-
-    #[derive(Deserialize)]
-    struct List<T>(Vec<T>);
-
-    #[derive(Deserialize)]
-    enum TestEnum {
-        UnitVariant,
-        NewTypeVariant(u8),
-        TupleVariant(u8, u8),
-        #[allow(dead_code)]
-        StructVarint {
-            one: u8,
-        },
-    }
-
-    #[test]
-    #[allow(clippy::cognitive_complexity)]
-    fn deserialize_primitive_newtype() {
-        assert_deserialize! {
-            NewType<i8> => [10],
-            NewType<i8> => [INT_8, 10],
-            NewType<i8> => [INT_16, 0, 0],
-            NewType<i8> => [INT_32, 0, 0, 0, 0],
-            NewType<i8> => [INT_64, 0, 0, 0, 0, 0, 0, 0, 0],
-            NewType<i16> => [INT_16, 1, 0],
-            NewType<i16> => [INT_32, 0, 0, 1, 0],
-            NewType<i16> => [INT_64, 0, 0, 0, 0, 0, 0, 1, 0],
-            NewType<i32> => [INT_32, 0, 1, 1, 0],
-            NewType<i32> => [INT_64, 0, 0, 0, 0, 0, 0, 1, 0],
-            NewType<i64> => [INT_64, 0, 0, 0, 0, 0, 0, 1, 0],
-            NewType<f64> => [FLOAT_64, 0, 0, 0, 0, 0, 0, 0, 0],
-            NewType<char> => [TINY_STRING + 1, 49],
-            NewType<char> => [STRING_8, 1, 49],
-            NewType<char> => [STRING_16, 0, 1, 49],
-            NewType<char> => [STRING_32, 0, 0, 0, 1, 49],
-            NewType<&str> => [TINY_STRING + 1, 50],
-            NewType<&str> => [STRING_8, 1, 50],
-            NewType<&str> => [STRING_16, 0, 1, 50],
-            NewType<&str> => [STRING_32, 0, 0, 0, 1, 50],
-            NewType<String> => [TINY_STRING + 1, 51],
-            NewType<String> => [STRING_8, 1, 51],
-            NewType<String> => [STRING_16, 0, 1, 51],
-            NewType<String> => [STRING_32, 0, 0, 0, 1, 51],
-            NewType<&[u8]> => [BYTES_8, 1, 0],
-            NewType<&[u8]> => [BYTES_16, 0, 1, 0],
-            NewType<&[u8]> => [BYTES_32, 0, 0, 0, 1, 0],
-            NewType<&Bytes> => [BYTES_8, 1, 0],
-            NewType<&Bytes> => [BYTES_16, 0, 1, 0],
-            NewType<&Bytes> => [BYTES_32, 0, 0, 0, 1, 0],
-            NewType<ByteBuf> => [BYTES_8, 1, 0],
-            NewType<ByteBuf> => [BYTES_16, 0, 1, 0],
-            NewType<ByteBuf> => [BYTES_32, 0, 0, 0, 1, 0],
-            NewType<()> => [NULL],
-            NewType<bool> => [TRUE],
-            NewType<bool> => [FALSE],
-        };
-    }
-
-    #[test]
-    fn deserialize_tuple_struct() {
-        assert_deserialize! {
-            TupleStruct<i8, i8> => [TINY_LIST + 2, 1, 1],
-            TupleStruct<i8, i8> => [LIST_8, 2, 1, 1],
-            TupleStruct<i8, i8> => [LIST_16, 0, 2, 1, 1],
-            TupleStruct<i8, i8> => [LIST_32, 0, 0, 0, 2, 1, 1],
-        }
-    }
-
-    #[test]
-    fn deserialize_list() {
-        assert_deserialize! {
-            List<u8> => [TINY_LIST + 2, 1, 1],
-            List<u8> => [LIST_8, 2, 1, 1],
-            List<u8> => [LIST_16, 0, 2, 1, 1],
-            List<u8> => [LIST_32, 0, 0, 0, 2, 1, 1],
-            List<u8> => [LIST_STREAM, 1, 1, END_OF_STREAM],
-        }
-    }
-
-    #[test]
-    fn deserialize_enum() {
-        assert_deserialize! {
-            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 11], b"UnitVariant".to_vec(), [NULL]),
-            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 14], b"NewTypeVariant".to_vec(), [127]),
-            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 12], b"TupleVariant".to_vec(), [TINY_LIST + 2, 100, 100]),
-            TestEnum => bytes!([TINY_MAP + 1, TINY_STRING + 12], b"StructVarint".to_vec(), [TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [100]),
-        }
-    }
-
-    #[test]
-    fn deserialize_map() {
-        use std::collections::HashMap;
-
-        #[derive(Deserialize)]
-        #[allow(dead_code)]
-        struct TestStruct {
-            one: u8,
-        }
-
-        assert_deserialize! {
-            TestStruct => bytes!([TINY_MAP + 1, TINY_STRING + 3], b"one".to_vec(), [100]),
-            HashMap<&str, u8> => bytes!([TINY_MAP + 2, TINY_STRING + 2], b"01".to_vec(), [100], [TINY_STRING + 3], b"123".to_vec(), [100]),
-        }
-    }
-
-    #[test]
-    fn deserialize_bytes() {
-        assert_deserialize! {
-            NewType<&Bytes> => bytes!([BYTES_8, 5, 10, 20, 30, 40, 50]),
-            NewType<ByteBuf> => bytes!([BYTES_16, 1, 0], [0; 256]),
         }
     }
 }

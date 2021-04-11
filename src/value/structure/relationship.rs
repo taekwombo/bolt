@@ -89,32 +89,31 @@ impl<'de> de::Visitor<'de> for RelationshipVisitor {
 #[cfg(test)]
 mod test_relationship {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
+        test,
+    };
 
-    const BYTES: &[u8] = &[181, 82, 100, 101, 102, 132, 110, 111, 100, 101, 160];
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + Relationship::LEN,
+        Relationship::SIG,
+        0,
+        0,
+        0,
+        TINY_STRING,
+        TINY_MAP,
+    ];
 
-    fn create_relationship() -> Relationship {
-        Relationship {
-            identity: 100,
-            start_node_identity: 101,
-            end_node_identity: 102,
-            r#type: String::from("node"),
+    #[test]
+    fn bytes() {
+        test::ser_de::<Relationship>(BYTES);
+        test::de_ser(Relationship {
+            identity: 0,
+            start_node_identity: 0,
+            end_node_identity: 0,
+            r#type: String::new(),
             properties: HashMap::new(),
-        }
-    }
-    #[test]
-    fn serialize() {
-        test::ser(&create_relationship(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_relationship(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+        });
         test::de_err::<Relationship>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Relationship>(&[TINY_STRUCT, Relationship::SIG + 1]);
     }
 }

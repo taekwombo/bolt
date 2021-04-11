@@ -8,8 +8,8 @@ use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct Run {
-    statement: String,
-    parameters: HashMap<String, Value>,
+    pub statement: String,
+    pub parameters: HashMap<String, Value>,
 }
 
 impl BoltStructure for Run {
@@ -75,35 +75,20 @@ impl<'de> de::Visitor<'de> for RunVisitor {
 #[cfg(test)]
 mod test_run {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
+        test,
+    };
 
-    const BYTES: &[u8] = &[
-        0xB2, 0x10, 0x8F, 0x52, 0x45, 0x54, 0x55, 0x52, 0x4E, 0x20, 0x31, 0x20, 0x41, 0x53, 0x20,
-        0x6E, 0x75, 0x6D, 0xA0,
-    ];
+    const BYTES: &[u8] = &[TINY_STRUCT + Run::LEN, Run::SIG, TINY_STRING, TINY_MAP];
 
-    const STATEMENT: &str = "RETURN 1 AS num";
-
-    fn create_run() -> Run {
-        Run {
-            statement: STATEMENT.to_owned(),
+    #[test]
+    fn bytes() {
+        test::ser_de::<Run>(BYTES);
+        test::de_ser(Run {
+            statement: String::new(),
             parameters: HashMap::new(),
-        }
-    }
-
-    #[test]
-    fn serialize() {
-        test::ser(&create_run(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_run(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+        });
         test::de_err::<Run>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Run>(&[TINY_STRUCT, Run::SIG + 1]);
     }
 }
