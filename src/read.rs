@@ -1,5 +1,5 @@
 use super::constants::marker::*;
-use super::error::{Error, ErrorCode, SerdeResult};
+use super::error::{SerdeError, ErrorCode, SerdeResult};
 use super::marker::Marker;
 
 macro_rules! bytes_to_usize {
@@ -58,7 +58,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
     fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> SerdeResult<()> {
         // Ensure that call to .set_virtual never overwrites existing virtual values
         if self.virtual_marker.is_some() || self.virtual_value.is_some() {
-            return Err(Error::create(ErrorCode::VirtualIllegalAssignment));
+            return Err(SerdeError::create(ErrorCode::VirtualIllegalAssignment));
         }
 
         self.virtual_marker = Some(marker);
@@ -75,7 +75,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         }
 
         if self.index + len > self.bytes.len() {
-            return Err(Error::create(ErrorCode::UnexpectedEndOfBytes));
+            return Err(SerdeError::create(ErrorCode::UnexpectedEndOfBytes));
         }
 
         let bytes = &self.bytes[self.index..self.index + len];
@@ -88,7 +88,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         self.bytes
             .get(self.index + ahead)
             .copied()
-            .ok_or_else(|| Error::create(ErrorCode::UnexpectedEndOfBytes))
+            .ok_or_else(|| SerdeError::create(ErrorCode::UnexpectedEndOfBytes))
     }
 
     fn consume_marker(&mut self) -> SerdeResult<Marker> {
@@ -306,7 +306,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
             }
 
             b => {
-                return Err(Error::create(format!(
+                return Err(SerdeError::create(format!(
                     "Peek error: byte {:x} is not a marker.",
                     b
                 )))

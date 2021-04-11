@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::BoltStructure;
 use super::{Node, UnboundRelationship};
 use crate::constants::STRUCTURE_NAME;
 use serde::{
@@ -20,6 +20,16 @@ impl BoltStructure for Path {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = (Vec<Node>, Vec<UnboundRelationship>, Vec<i64>);
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Path")
+            .field("nodes", &self.nodes)
+            .field("relationships", &self.relationships)
+            .field("sequence", &self.sequence)
+            .finish()
+    }
 }
 
 impl ser::Serialize for Path {

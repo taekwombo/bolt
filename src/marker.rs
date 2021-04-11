@@ -1,5 +1,5 @@
 use super::constants::marker::*;
-use super::error::{Error, SerdeResult};
+use super::error::{SerdeError, SerdeResult};
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -39,8 +39,8 @@ pub enum Marker {
 }
 
 impl Marker {
-    fn size_exceeded(marker_type: &str, len: usize) -> Error {
-        Error::create(format!("Cannot pack {} with size {}.", marker_type, len))
+    fn size_exceeded(marker_type: &str, len: usize) -> SerdeError {
+        SerdeError::create(format!("Cannot pack {} with size {}.", marker_type, len))
     }
 
     pub(crate) fn inc_size(&mut self, size: usize) -> SerdeResult<()> {
@@ -51,7 +51,7 @@ impl Marker {
             Self::Map(len) => *len += size,
             Self::Struct(len) => *len += size,
             marker => {
-                return Err(Error::create(format!(
+                return Err(SerdeError::create(format!(
                     "Unexpected {}, expected Marker with size.",
                     marker
                 )))

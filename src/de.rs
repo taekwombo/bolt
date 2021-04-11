@@ -1,5 +1,5 @@
 use super::constants::{STRUCTURE_FIELDS_KEY_B, STRUCTURE_SIG_KEY_B};
-use super::error::{Error, ErrorCode, SerdeResult};
+use super::error::{SerdeError, ErrorCode, SerdeResult};
 use super::marker::Marker;
 use super::read::{ByteReader, Unpacker};
 use serde::de;
@@ -15,14 +15,14 @@ where
 }
 
 mod errors {
-    use super::{Error, Marker};
+    use super::{SerdeError, Marker};
 
-    pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> Error {
-        Error::create(format!("Expected {}, got {} instead.", expected, actual))
+    pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> SerdeError {
+        SerdeError::create(format!("Expected {}, got {} instead.", expected, actual))
     }
 
-    pub(super) fn invalid_length(kind: &str, expected: usize, actual: usize) -> Error {
-        Error::create(format!(
+    pub(super) fn invalid_length(kind: &str, expected: usize, actual: usize) -> SerdeError {
+        SerdeError::create(format!(
             "Expected {} length to be equal to {}, got {} instead",
             kind, expected, actual
         ))
@@ -48,7 +48,7 @@ where
         if self.read.is_done() {
             Ok(())
         } else {
-            Err(Error::create(ErrorCode::UnexpectedTrailingBytes))
+            Err(SerdeError::create(SerdeError::UnexpectedTrailingBytes))
         }
     }
 
@@ -66,7 +66,7 @@ where
         <T as std::convert::TryFrom<i64>>::Error: std::error::Error + 'static,
     {
         match self.read.consume_marker()? {
-            Marker::I64(num) => T::try_from(num).map_err(|e| Error::create(e.to_string())),
+            Marker::I64(num) => T::try_from(num).map_err(|e| SerdeError::create(e.to_string())),
             m => Err(errors::unexpected_marker("Marker::I64", &m)),
         }
     }
@@ -166,7 +166,7 @@ impl<'de, 'a, U> de::Deserializer<'de> for &'a mut Deserializer<U>
 where
     U: Unpacker<'de>,
 {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
@@ -449,7 +449,7 @@ impl<'a, 'de, U> de::SeqAccess<'de> for SeqAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn next_element_seed<T>(&mut self, seed: T) -> SerdeResult<Option<T::Value>>
     where
@@ -474,7 +474,7 @@ impl<'a, 'de, U> de::MapAccess<'de> for MapAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
     where
@@ -505,7 +505,7 @@ impl<'a, 'de, U> de::EnumAccess<'de> for VariantAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = Error;
+    type Error = SerdeError;
     type Variant = Self;
 
     fn variant_seed<V>(self, seed: V) -> SerdeResult<(V::Value, Self)>
@@ -521,7 +521,7 @@ impl<'a, 'de, U> de::VariantAccess<'de> for VariantAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn unit_variant(self) -> SerdeResult<()> {
         de::Deserialize::deserialize(self.de)
@@ -566,7 +566,7 @@ impl<'a, 'de, U> de::MapAccess<'de> for StructureAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
     where
@@ -609,7 +609,7 @@ where
                 self.state = StructureAccessState::Done;
                 Ok(seed.deserialize(&mut *self.de)?)
             }
-            StructureAccessState::Done => Err(Error::impl_err(
+            StructureAccessState::Done => Err(SerdeError::impl_err(
                 "StructureAccess value_seed cannot reach State::Done.",
             )),
         }

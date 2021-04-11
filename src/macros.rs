@@ -4,9 +4,7 @@ macro_rules! structure_access {
         {
             check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
-            let __fields = $map_access.next_value::<<$structure as $crate::value::BoltStructure>::Fields>()?;
-
-            check!($($tail)*, __fields);
+            let __fields = $map_access.next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>()?;
             check!(__key, $map_access);
 
             __fields
@@ -18,9 +16,7 @@ macro_rules! structure_access {
             check!(__sig, $map_access, $structure::SIG);
             check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
-            let __fields = $map_access.next_value::<<$structure as $crate::value::BoltStructure>::Fields>()?;
-
-            check!($($tail)*, __fields);
+            let __fields = $map_access.next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>()?;
             check!(__key, $map_access);
 
             __fields
@@ -29,53 +25,27 @@ macro_rules! structure_access {
 }
 
 macro_rules! check {
-    (__key, $map_access:ident, $expected:path) => {
-        {
-            match $map_access.next_key::<&str>()? {
-                Some(__key) if __key == $expected => (),
-                Some(__key) => unexpected_key_access!(__key, $expected),
-                None => unexpected_key_access!($expected),
-            }
+    (__key, $map_access:ident, $expected:path) => {{
+        match $map_access.next_key::<&str>()? {
+            Some(__key) if __key == $expected => (),
+            Some(__key) => unexpected_key_access!(__key, $expected),
+            None => unexpected_key_access!($expected),
         }
-    };
-    (__key, $map_access:ident) => {
-        {
-            if let Some(__key) = $map_access.next_key::<&str>()? {
-                unexpected_key_access!(__key, "to be None");
-            }
+    }};
+    (__key, $map_access:ident) => {{
+        if let Some(__key) = $map_access.next_key::<&str>()? {
+            unexpected_key_access!(__key, "to be None");
         }
-    };
-    (__sig, $map_access:ident, $expected:path) => {
-        {
-            let __signature = $map_access.next_value::<u8>()?;
-            if __signature != $expected {
-                return Err(
-                    <V::Error as ::serde::de::Error>::custom(format!(
-                            "Expected {:#04x} signature. Got {:#04x} instead.",
-                            $expected,
-                            __signature,
-                    ))
-                );
-            }
+    }};
+    (__sig, $map_access:ident, $expected:path) => {{
+        let __signature = $map_access.next_value::<u8>()?;
+        if __signature != $expected {
+            return Err(<V::Error as ::serde::de::Error>::custom(format!(
+                "Expected {:#04x} signature. Got {:#04x} instead.",
+                $expected, __signature,
+            )));
         }
-    };
-    (, $( $tail:tt )*) => {
-        check!($( $tail )*);
-    };
-    (__fields) => {};
-    (fields($len:expr), $fields:ident) => {
-        {
-            let __len = $fields.len();
-            if __len != $len {
-                return Err(
-                    <V::Error as ::serde::de::Error>::custom(format!(
-                        "Expected structure fields length to be {}, got {}",
-                        $len,
-                        $fields.len(),
-                )));
-            }
-        }
-    };
+    }};
 }
 
 macro_rules! unexpected_key_access {

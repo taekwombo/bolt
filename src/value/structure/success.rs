@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::{BoltStructure, Single};
 use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
@@ -16,7 +16,13 @@ impl BoltStructure for Success {
     const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Vec<HashMap<String, Value>>;
+    type Fields = Single<HashMap<String, Value>>;
+}
+
+impl fmt::Display for Success {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Success").field(&self.metadata).finish()
+    }
 }
 
 impl ser::Serialize for Success {
@@ -53,9 +59,9 @@ impl<'de> de::Visitor<'de> for SuccessVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let mut fields = structure_access!(map_access, Success);
+        let fields = structure_access!(map_access, Success);
         Ok(Success {
-            metadata: fields.pop().expect("Fields to have on element"),
+            metadata: fields.value(),
         })
     }
 }

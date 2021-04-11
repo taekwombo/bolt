@@ -1,7 +1,7 @@
-use super::Value;
-use crate::constants::{STRUCTURE_FIELDS_KEY, STRUCTURE_SIG_KEY};
-use crate::error::{Error, SerdeResult};
-use serde::de::IntoDeserializer;
+use super::{Value, Structure};
+use crate::constants::STRUCTURE_SIG_KEY;
+use crate::error::{SerdeError, SerdeResult};
+use serde::de::{Deserialize, IntoDeserializer};
 use serde::{de, forward_to_deserialize_any};
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;
@@ -16,10 +16,10 @@ where
 }
 
 mod errors {
-    use super::{Error, Value};
+    use super::{SerdeError, Value};
 
-    pub(super) fn unexpected_type(expected: &str, actual: &Value) -> Error {
-        Error::create(format!(
+    pub(super) fn unexpected_type(expected: &str, actual: &Value) -> SerdeError {
+        SerdeError::create(format!(
             "Unexpected type {}, expected {}.",
             actual, expected
         ))
@@ -95,11 +95,9 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
     {
         match map_access.next_key::<&str>()? {
             Some(key) if key == STRUCTURE_SIG_KEY => {
-                let signature: u8 = map_access.next_value::<u8>()?;
-                check!(__key, map_access, STRUCTURE_FIELDS_KEY);
-                let fields: Vec<Value> = map_access.next_value()?;
+                let structure = map_access.next_value::<Structure>()?;
                 check!(__key, map_access);
-                Ok(Self::Value::Structure { signature, fields })
+                Ok(Self::Value::Structure(structure))
             }
             Some(key) => {
                 let mut map: HashMap<String, Value> = HashMap::new();
@@ -125,7 +123,7 @@ impl<'de> de::Deserialize<'de> for Value {
 }
 
 impl<'de> de::Deserializer<'de> for Value {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
@@ -140,9 +138,7 @@ impl<'de> de::Deserializer<'de> for Value {
             Self::List(_) => self.deserialize_seq(visitor),
             Self::Map(_) => self.deserialize_map(visitor),
             Self::Bytes(b) => visitor.visit_byte_buf(b.to_vec()),
-            Self::Structure { signature, fields } => {
-                visitor.visit_map(StructureDeserializer::new(signature, fields))
-            }
+            Self::Structure(v) => v.deserialize(self),
         }
     }
 
@@ -173,7 +169,7 @@ impl<'de> de::Deserializer<'de> for Value {
     {
         match self {
             Self::I64(i) => {
-                visitor.visit_u64(u64::try_from(i).map_err(|e| Error::create(e.to_string()))?)
+                visitor.visit_u64(u64::try_from(i).map_err(|e| SerdeError::create(e.to_string()))?)
             }
             v => Err(errors::unexpected_type("Value::I64", &v)),
         }
@@ -357,9 +353,7 @@ impl<'de> de::Deserializer<'de> for Value {
                 iter: m.into_iter(),
                 value: None,
             }),
-            Self::Structure { signature, fields } => {
-                visitor.visit_map(StructureDeserializer::new(signature, fields))
-            }
+            Self::Structure(structure) => structure.deserialize(self),
             v => Err(errors::unexpected_type("Value::Map", &v)),
         }
     }
@@ -390,20 +384,20 @@ impl<'de> de::Deserializer<'de> for Value {
                 let mut iter = m.into_iter();
                 let res = match iter.next() {
                     None => {
-                        return Err(Error::create(
+                        return Err(SerdeError::create(
                             "Expected exactly 1 key for enum deserialization",
                         ))
                     }
                     Some(tp) => tp,
                 };
                 if iter.next().is_some() {
-                    return Err(Error::create(
+                    return Err(SerdeError::create(
                         "Expected exactly 1 key for enum deserialization",
                     ));
                 }
                 res
             }
-            _ => return Err(Error::create("Map expected for enum deserializaton")),
+            _ => return Err(SerdeError::create("Map expected for enum deserializaton")),
         };
         visitor.visit_enum(EnumAccess {
             variant,
@@ -432,7 +426,7 @@ struct SeqDeserializer {
 }
 
 impl<'de> de::Deserializer<'de> for SeqDeserializer {
-    type Error = Error;
+    type Error = SerdeError;
 
     #[inline]
     fn deserialize_any<V>(mut self, visitor: V) -> SerdeResult<V::Value>
@@ -441,7 +435,7 @@ impl<'de> de::Deserializer<'de> for SeqDeserializer {
     {
         let v = visitor.visit_seq(&mut self)?;
         if self.iter.len() != 0 {
-            return Err(Error::create(
+            return Err(SerdeError::create(
                 "Value::List must have all of its elements deserialized",
             ));
         }
@@ -456,7 +450,7 @@ impl<'de> de::Deserializer<'de> for SeqDeserializer {
 }
 
 impl<'de> de::SeqAccess<'de> for SeqDeserializer {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn next_element_seed<S>(&mut self, seed: S) -> SerdeResult<Option<S::Value>>
     where
@@ -481,7 +475,7 @@ struct MapKeyDeserializer {
 }
 
 impl<'de> de::Deserializer<'de> for MapKeyDeserializer {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
@@ -503,7 +497,7 @@ struct MapAccess {
 }
 
 impl<'de> de::MapAccess<'de> for MapAccess {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
     where
@@ -523,7 +517,7 @@ impl<'de> de::MapAccess<'de> for MapAccess {
         V: de::DeserializeSeed<'de>,
     {
         match self.value.take() {
-            None => Err(Error::create("Value is missing")),
+            None => Err(SerdeError::create("Value is missing")),
             Some(v) => seed.deserialize(v),
         }
     }
@@ -553,7 +547,7 @@ impl StructureDeserializer {
 }
 
 impl<'de> de::MapAccess<'de> for StructureDeserializer {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
     where
@@ -602,7 +596,7 @@ struct EnumAccess {
 
 impl<'de> de::EnumAccess<'de> for EnumAccess {
     type Variant = VariantAccess;
-    type Error = Error;
+    type Error = SerdeError;
 
     fn variant_seed<V>(self, seed: V) -> SerdeResult<(V::Value, Self::Variant)>
     where
@@ -619,7 +613,7 @@ struct VariantAccess {
 }
 
 impl<'de> de::VariantAccess<'de> for VariantAccess {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn unit_variant(self) -> SerdeResult<()> {
         match self.value {
@@ -634,7 +628,7 @@ impl<'de> de::VariantAccess<'de> for VariantAccess {
     {
         match self.value {
             Some(value) => seed.deserialize(value),
-            None => Err(Error::create(
+            None => Err(SerdeError::create(
                 "Unexpected unit variant, expected newtype variant.",
             )),
         }
@@ -652,7 +646,7 @@ impl<'de> de::VariantAccess<'de> for VariantAccess {
                 "tuple variant (Value::List)",
                 &other,
             )),
-            None => Err(Error::create(
+            None => Err(SerdeError::create(
                 "Unexpected unit variant, expected tuple variant.",
             )),
         }
@@ -675,7 +669,7 @@ impl<'de> de::VariantAccess<'de> for VariantAccess {
                 "struct variant (Value::Map)",
                 &other,
             )),
-            None => Err(Error::create(
+            None => Err(SerdeError::create(
                 "Unexpected unit variant, expected struct variant.",
             )),
         }

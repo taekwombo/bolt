@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::{BoltStructure, Single};
 use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
@@ -16,7 +16,13 @@ impl BoltStructure for Record {
     const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Vec<Vec<Value>>;
+    type Fields = Single<Vec<Value>>;
+}
+
+impl fmt::Display for Record {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Record").field(&self.fields).finish()
+    }
 }
 
 impl ser::Serialize for Record {
@@ -53,10 +59,10 @@ impl<'de> de::Visitor<'de> for RecordVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let mut fields = structure_access!(map_access, Record, fields(1));
+        let fields = structure_access!(map_access, Record);
         Ok(Record {
             // TODO(@krnik): Instead of panic send the error to the consumer
-            fields: fields.pop().expect("Fields to have one element"),
+            fields: fields.value(),
         })
     }
 }

@@ -1,5 +1,5 @@
 use super::constants::STRUCTURE_NAME;
-use super::error::{Error, SerdeResult};
+use super::error::{SerdeError, SerdeResult};
 use super::marker::Marker;
 use serde::{ser, Serialize};
 use std::convert::TryFrom;
@@ -17,7 +17,7 @@ pub fn to_bytes<T: Serialize>(value: &T) -> SerdeResult<Vec<u8>> {
 
 impl<'a> ser::Serializer for &'a mut Serializer {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     type SerializeSeq = Compound<'a>;
     type SerializeTuple = Compound<'a>;
@@ -76,7 +76,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 
     fn serialize_u64(self, value: u64) -> SerdeResult<Self::Ok> {
         let val_int = i64::try_from(value).map_err(|_| {
-            Error::create(format!("Attempt to convert {}u64 into i64 failed", value))
+            SerdeError::create(format!("Attempt to convert {}u64 into i64 failed", value))
         })?;
         self.output.append(&mut Marker::I64(val_int).to_vec()?);
         Ok(())
@@ -278,7 +278,7 @@ impl<'a> Compound<'a> {
 
 impl<'a> ser::SerializeSeq for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_element<T>(&mut self, value: &T) -> SerdeResult<Self::Ok>
     where
@@ -302,7 +302,7 @@ impl<'a> ser::SerializeSeq for Compound<'a> {
 
 impl<'a> ser::SerializeTuple for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_element<T>(&mut self, value: &T) -> SerdeResult<Self::Ok>
     where
@@ -326,7 +326,7 @@ impl<'a> ser::SerializeTuple for Compound<'a> {
 
 impl<'a> ser::SerializeTupleStruct for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_field<T>(&mut self, value: &T) -> SerdeResult<()>
     where
@@ -350,7 +350,7 @@ impl<'a> ser::SerializeTupleStruct for Compound<'a> {
 
 impl<'a> ser::SerializeTupleVariant for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_field<T>(&mut self, value: &T) -> SerdeResult<()>
     where
@@ -374,7 +374,7 @@ impl<'a> ser::SerializeTupleVariant for Compound<'a> {
 
 impl<'a> ser::SerializeMap for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_key<T>(&mut self, value: &T) -> SerdeResult<()>
     where
@@ -412,7 +412,7 @@ impl<'a> ser::SerializeMap for Compound<'a> {
 
 impl<'a> ser::SerializeStruct for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
     where
@@ -438,7 +438,7 @@ impl<'a> ser::SerializeStruct for Compound<'a> {
 
 impl<'a> ser::SerializeStructVariant for Compound<'a> {
     type Ok = ();
-    type Error = Error;
+    type Error = SerdeError;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
     where

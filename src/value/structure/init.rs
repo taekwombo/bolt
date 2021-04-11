@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::BoltStructure;
 use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
@@ -29,6 +29,12 @@ impl Init {
     }
 }
 
+impl fmt::Display for Init {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Init").field(&self.client).field(&self.auth).finish()
+    }
+}
+
 #[derive(Debug, serde_derive::Deserialize, PartialEq, serde_derive::Serialize)]
 pub struct BasicAuth {
     scheme: String,
@@ -43,6 +49,15 @@ impl BasicAuth {
             principal: user,
             credentials: password,
         }
+    }
+}
+
+impl fmt::Display for BasicAuth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BasicAuth")
+            .field("scheme", &self.scheme)
+            .field("principal", &self.principal)
+            .finish()
     }
 }
 

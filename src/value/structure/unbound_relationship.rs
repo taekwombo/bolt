@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::BoltStructure;
 use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
@@ -19,6 +19,16 @@ impl BoltStructure for UnboundRelationship {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = (i64, String, HashMap<String, Value>);
+}
+
+impl fmt::Display for UnboundRelationship {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("UnboundRelationship")
+            .field("identity", &self.identity)
+            .field("type", &self.r#type)
+            .field("properties", &self.properties)
+            .finish()
+    }
 }
 
 impl ser::Serialize for UnboundRelationship {

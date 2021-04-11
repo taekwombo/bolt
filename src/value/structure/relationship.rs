@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::BoltStructure;
 use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
@@ -21,6 +21,18 @@ impl BoltStructure for Relationship {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = (i64, i64, i64, String, HashMap<String, Value>);
+}
+
+impl fmt::Display for Relationship {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Relationship")
+            .field("identity", &self.identity)
+            .field("start_node_identity", &self.start_node_identity)
+            .field("end_node_identity", &self.end_node_identity)
+            .field("type", &self.r#type)
+            .field("properties", &self.properties)
+            .finish()
+    }
 }
 
 impl ser::Serialize for Relationship {

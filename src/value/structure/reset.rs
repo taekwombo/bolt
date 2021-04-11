@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::{BoltStructure, Empty};
 use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
@@ -14,7 +14,13 @@ impl BoltStructure for Reset {
     const LEN: u8 = 0x00;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Vec<()>;
+    type Fields = Empty;
+}
+
+impl fmt::Display for Reset {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Reset")
+    }
 }
 
 impl ser::Serialize for Reset {
@@ -50,7 +56,7 @@ impl<'de> de::Visitor<'de> for ResetVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, Reset, fields(0));
+        structure_access!(map_access, Reset);
         Ok(Reset)
     }
 }

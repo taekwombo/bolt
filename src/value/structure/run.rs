@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::BoltStructure;
 use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
@@ -18,6 +18,15 @@ impl BoltStructure for Run {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = (String, HashMap<String, Value>);
+}
+
+impl fmt::Display for Run {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Run")
+            .field("statement", &self.statement)
+            .field("parameters", &self.parameters)
+            .finish()
+    }
 }
 
 impl<'a> ser::Serialize for Run {

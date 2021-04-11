@@ -1,6 +1,6 @@
 use super::Value;
-use crate::constants::STRUCTURE_NAME;
-use serde::ser::{self, SerializeMap, SerializeSeq, SerializeTupleStruct};
+use serde::Serialize;
+use serde::ser::{self, SerializeMap, SerializeSeq};
 
 impl ser::Serialize for Value {
     fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -25,15 +25,7 @@ impl ser::Serialize for Value {
                 map.end()
             }
             Self::Bytes(v) => serializer.serialize_bytes(&*v),
-            Self::Structure { signature, fields } => {
-                let f_len = fields.len();
-                let len: usize = ((*signature as usize) << 56) + f_len;
-                let mut tuple = serializer.serialize_tuple_struct(STRUCTURE_NAME, len)?;
-                for elem in fields.iter() {
-                    tuple.serialize_field(elem)?;
-                }
-                tuple.end()
-            }
+            Self::Structure(v) => (*v).serialize(serializer),
         }
     }
 }

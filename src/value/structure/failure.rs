@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::{BoltStructure, Single};
 use crate::{constants::STRUCTURE_NAME, Value};
 use serde::{
     de,
@@ -11,6 +11,12 @@ pub struct Failure {
     metadata: HashMap<String, Value>,
 }
 
+impl fmt::Display for Failure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Failure").field(&self.metadata).finish()
+    }
+}
+
 impl BoltStructure for Failure {
     const SIG: u8 = 0x7F;
     const LEN: u8 = 0x01;
@@ -21,7 +27,7 @@ impl BoltStructure for Failure {
     // more ergonomically. Also it will greatly simplify structure_access
     // macro code.
     // Consider: Error handling clarity.
-    type Fields = Vec<HashMap<String, Value>>;
+    type Fields = Single<HashMap<String, Value>>;
 }
 
 impl ser::Serialize for Failure {
@@ -58,9 +64,9 @@ impl<'de> de::Visitor<'de> for FailureVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let mut fields = structure_access!(map_access, Failure, fields(1));
+        let fields = structure_access!(map_access, Failure);
         Ok(Failure {
-            metadata: fields.pop().expect("Fields to have one element"),
+            metadata: fields.value(),
         })
     }
 }
@@ -82,7 +88,7 @@ mod test_failure {
     }
 
     #[test]
-    fn serialize() {
+    fn serializefailure() {
         test::ser(&create_failure(), BYTES);
     }
 

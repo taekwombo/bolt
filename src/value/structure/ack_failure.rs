@@ -1,4 +1,4 @@
-use super::super::BoltStructure;
+use super::{BoltStructure, Empty};
 use crate::constants::STRUCTURE_NAME;
 use serde::{
     de,
@@ -14,7 +14,13 @@ impl BoltStructure for AckFailure {
     const LEN: u8 = 0x00;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Vec<()>;
+    type Fields = Empty;
+}
+
+impl fmt::Display for AckFailure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("AckFailure")
+    }
 }
 
 impl ser::Serialize for AckFailure {
@@ -50,9 +56,19 @@ impl<'de> de::Visitor<'de> for AckFailureVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, AckFailure, fields(0));
+        structure_access!(map_access, AckFailure);
         Ok(AckFailure)
     }
+}
+
+// TODO: Finish this ;)
+impl<'de> de::Deserializer<'de> for AckFailure {
+    type Error = SerdeError;
+
+    fn deserialize_any () {}
+    fn deserialize_mep () {}
+
+    forward_to_deserialize_any!()
 }
 
 #[cfg(test)]
@@ -73,6 +89,12 @@ mod test_ack_failure {
     #[test]
     fn deserialize() {
         test::de(&AckFailure, BYTES);
+    }
+
+    #[test]
+    fn deserialize_ack() {
+        let r = from_bytes::<AckFailure>(BYTES);
+        println!("{:?}", r);
     }
 
     #[test]

@@ -1,14 +1,14 @@
 use serde::{de, ser};
 use std::fmt;
 
-pub type SerdeResult<T> = std::result::Result<T, Error>;
+pub type SerdeResult<T> = std::result::Result<T, SerdeError>;
 
 #[derive(Debug)]
-pub struct Error {
+pub struct SerdeError {
     err: Box<ErrorCode>,
 }
 
-impl Error {
+impl SerdeError {
     pub(crate) fn create(msg: impl Into<ErrorCode>) -> Self {
         Self {
             err: Box::new(msg.into()),
@@ -22,35 +22,47 @@ impl Error {
     }
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for SerdeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.err)
     }
 }
 
-impl ser::Error for Error {
+impl ser::Error for SerdeError {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Self::create(msg.to_string())
     }
 }
 
-impl de::Error for Error {
+impl de::Error for SerdeError {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Self::create(msg.to_string())
     }
 
     fn invalid_type(unexp: de::Unexpected, exp: &dyn de::Expected) -> Self {
         if let de::Unexpected::Unit = unexp {
-            Error::custom(format_args!("invalid type: null, expected {}", exp))
+            SerdeError::custom(format_args!("invalid type: null, expected {}", exp))
         } else {
-            Error::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
+            SerdeError::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
         }
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for SerdeError {
     fn cause(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(self)
+    }
+}
+
+impl From<std::str::Utf8Error> for SerdeError {
+    fn from(m: std::str::Utf8Error) -> Self {
+        Self::create(m.to_string())
+    }
+}
+
+impl From<std::string::FromUtf8Error> for SerdeError {
+    fn from(m: std::string::FromUtf8Error) -> Self {
+        Self::create(m.to_string())
     }
 }
 
@@ -115,17 +127,5 @@ impl From<String> for ErrorCode {
 impl From<&str> for ErrorCode {
     fn from(s: &str) -> Self {
         Self::Message(s.to_owned())
-    }
-}
-
-impl From<std::str::Utf8Error> for Error {
-    fn from(m: std::str::Utf8Error) -> Self {
-        Self::create(m.to_string())
-    }
-}
-
-impl From<std::string::FromUtf8Error> for Error {
-    fn from(m: std::string::FromUtf8Error) -> Self {
-        Self::create(m.to_string())
     }
 }
