@@ -7,6 +7,7 @@ mod macros;
 
 pub mod constants;
 mod de;
+mod deserializer;
 mod error;
 mod marker;
 mod read;

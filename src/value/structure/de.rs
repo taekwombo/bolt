@@ -121,3 +121,17 @@ impl<'de> de::Deserialize<'de> for Structure {
         deserializer.deserialize_map(StructureVisitor)
     }
 }
+
+//impl<'de> de::Deserializer<'de> for Structure {
+//    type Error = SerdeError;
+//
+//    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+//    where
+//        V: de::Visitor<'de>
+//    {
+//        match self {
+//            // IMPL MapAccess + Deserializer for AckFailure :)
+//            Self::AckFailure => vitor.visit_map()
+//        }
+//    }
+//}

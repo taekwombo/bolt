@@ -1,7 +1,12 @@
 use super::{BoltStructure, Empty};
-use crate::constants::STRUCTURE_NAME;
+use crate::{
+    constants::{SIG_KEY, STRUCTURE_NAME},
+    deserializer::{StructureAccess, StructureStateDe, ValueDe},
+    error::{SerdeError, SerdeResult},
+};
 use serde::{
     de,
+    forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
 use std::fmt;
@@ -34,15 +39,6 @@ impl ser::Serialize for AckFailure {
     }
 }
 
-impl<'de> de::Deserialize<'de> for AckFailure {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(AckFailureVisitor)
-    }
-}
-
 struct AckFailureVisitor;
 
 impl<'de> de::Visitor<'de> for AckFailureVisitor {
@@ -61,6 +57,35 @@ impl<'de> de::Visitor<'de> for AckFailureVisitor {
     }
 }
 
+impl<'de> de::Deserialize<'de> for AckFailure {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(AckFailureVisitor)
+    }
+}
+
+impl<'de> de::Deserializer<'de> for AckFailure {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    where
+        V: de::Visitor<'de>
+    {
+        visitor.visit_map(StructureAccess::new(vec![
+            (SIG_KEY.into(), ValueDe::number(Self::SIG)),
+        ]))
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct identifier enum ignored_any
+    }
+}
+
+// TODO(@krnik): Move such tests to the /tests folder
 #[cfg(test)]
 mod test_ack_failure {
     use super::*;

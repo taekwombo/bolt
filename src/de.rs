@@ -549,7 +549,6 @@ where
     }
 }
 
-#[derive(Debug)]
 enum StructureAccessState {
     Signature,
     Fields,
