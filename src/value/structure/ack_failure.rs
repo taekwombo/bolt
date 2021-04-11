@@ -61,47 +61,17 @@ impl<'de> de::Visitor<'de> for AckFailureVisitor {
     }
 }
 
-// TODO: Finish this ;)
-impl<'de> de::Deserializer<'de> for AckFailure {
-    type Error = SerdeError;
-
-    fn deserialize_any () {}
-    fn deserialize_mep () {}
-
-    forward_to_deserialize_any!()
-}
-
 #[cfg(test)]
 mod test_ack_failure {
     use super::*;
-    use crate::{
-        constants::marker::{NULL, TINY_STRUCT},
-        from_bytes, test, to_bytes,
-    };
+    use crate::{constants::marker::TINY_STRUCT, test};
 
-    const BYTES: &[u8] = &[TINY_STRUCT, AckFailure::SIG];
+    const BYTES: &[u8] = &[TINY_STRUCT + AckFailure::LEN, AckFailure::SIG];
 
     #[test]
-    fn serialize() {
-        test::ser(&AckFailure, BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&AckFailure, BYTES);
-    }
-
-    #[test]
-    fn deserialize_ack() {
-        let r = from_bytes::<AckFailure>(BYTES);
-        println!("{:?}", r);
-    }
-
-    #[test]
-    fn deserialize_fail() {
-        test::de_err::<AckFailure>(&[TINY_STRUCT, AckFailure::SIG, 0]);
+    fn bytes() {
+        test::ser_de::<AckFailure>(BYTES);
+        test::de_ser(AckFailure);
         test::de_err::<AckFailure>(&[TINY_STRUCT, AckFailure::SIG + 1]);
-        test::de_err::<AckFailure>(&[TINY_STRUCT + 1, AckFailure::SIG, 0]);
-        test::de_err::<AckFailure>(&[TINY_STRUCT, AckFailure::SIG, NULL]);
     }
 }

@@ -1,3 +1,4 @@
+use super::super::Value;
 use serde::{
     de::{self, Deserialize, Deserializer, Error},
     ser::{self, Serialize, SerializeTuple},
@@ -5,7 +6,7 @@ use serde::{
 use std::fmt;
 use std::marker::PhantomData;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Single<T>(T);
 
 impl<T> Single<T> {
@@ -70,7 +71,7 @@ where
             Some(elem) => {
                 if seq_access.next_element::<T>()?.is_some() {
                     return Err(V::Error::custom(
-                        "Expected structure fields to have exactly one element. Got more",
+                        "Expected structure fields to have exactly one element, got more",
                     ));
                 }
                 Ok(Single(elem))
@@ -82,7 +83,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Empty;
 
 impl ser::Serialize for Empty {
@@ -116,34 +117,41 @@ impl<'de> de::Visitor<'de> for EmptyVisitor {
     where
         V: de::SeqAccess<'de>,
     {
-        match seq_access.next_element::<()>()? {
-            Some(_) => Err(V::Error::custom("Expected empty structure fields")),
+        match seq_access.next_element::<Value>()? {
+            Some(elem) => Err(V::Error::custom(format!(
+                "Expected empty structure fields, instead got element {}",
+                elem
+            ))),
             None => Ok(Empty),
         }
     }
 }
 
 #[cfg(test)]
-mod test_simple {
+mod test_fields {
     use super::*;
-    use crate::{constants::marker::TINY_LIST, from_bytes, test, to_bytes};
+    use crate::{constants::marker::TINY_LIST, test};
 
-    #[test]
-    fn simple_test() {
-        let result = from_bytes::<Single<u8>>(&[TINY_LIST + 1, 1]);
-        let resulta = from_bytes::<Single<u8>>(&[TINY_LIST, 1]);
-        let resultb = from_bytes::<Single<u8>>(&[TINY_LIST + 2, 1]);
-        println!("{:?}", result);
-        println!("{:?}", resulta);
-        println!("{:?}", resultb);
+    mod empty {
+        use super::*;
+
+        #[test]
+        fn bytes() {
+            test::ser_de::<Empty>(&[TINY_LIST]);
+            test::de_ser(Empty);
+            test::de_err::<Empty>(&[TINY_LIST + 1, 0]);
+        }
     }
 
-    #[test]
-    fn empty_test() {
-        let result = from_bytes::<Empty>(&[TINY_LIST]);
-        let res1 = from_bytes::<Empty>(&[TINY_LIST + 1]);
+    mod single {
+        use super::*;
 
-        println!("{:?}", result);
-        println!("{:?}", res1);
+        #[test]
+        fn bytes() {
+            test::ser_de::<Single<u8>>(&[TINY_LIST + 1, 0]);
+            test::de_ser(Single(100u8));
+            test::de_err::<Single<u8>>(&[TINY_LIST]);
+            test::de_err::<Single<u8>>(&[TINY_LIST + 2, 0, 0]);
+        }
     }
 }

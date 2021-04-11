@@ -11,8 +11,9 @@ mod error;
 mod marker;
 mod read;
 mod ser;
-mod value;
+pub mod value;
 
 pub use de::from_bytes;
 pub use ser::to_bytes;
-pub use value::{from_value, Value};
+//pub use value::{from_value, Value};
+pub use value::Value;

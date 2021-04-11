@@ -1,27 +1,27 @@
 // TODO: Documentation with examples
 macro_rules! structure_access {
-    ($map_access:ident, $structure:ident, no_sig_key $( $tail:tt )*) => {
-        {
-            check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
+    ($map_access:ident, $structure:ident, no_sig_key) => {{
+        check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
-            let __fields = $map_access.next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>()?;
-            check!(__key, $map_access);
+        let __fields = $map_access
+            .next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>(
+        )?;
+        check!(__key, $map_access);
 
-            __fields
-        }
-    };
-    ($map_access:ident, $structure:ident $( $tail:tt )*) => {
-        {
-            check!(__key, $map_access, $crate::constants::STRUCTURE_SIG_KEY);
-            check!(__sig, $map_access, $structure::SIG);
-            check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
+        __fields
+    }};
+    ($map_access:ident, $structure:ident) => {{
+        check!(__key, $map_access, $crate::constants::STRUCTURE_SIG_KEY);
+        check!(__sig, $map_access, $structure::SIG);
+        check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
-            let __fields = $map_access.next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>()?;
-            check!(__key, $map_access);
+        let __fields = $map_access
+            .next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>(
+        )?;
+        check!(__key, $map_access);
 
-            __fields
-        }
-    };
+        __fields
+    }};
 }
 
 macro_rules! check {

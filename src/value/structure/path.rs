@@ -80,43 +80,27 @@ impl<'de> de::Visitor<'de> for PathVisitor {
 #[cfg(test)]
 mod test_path {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
-    use std::collections::HashMap;
+    use crate::{
+        constants::marker::{TINY_LIST, TINY_STRUCT},
+        test,
+    };
 
     const BYTES: &[u8] = &[
-        179, 80, 145, 179, 78, 1, 145, 132, 78, 111, 100, 101, 160, 145, 179, 82, 201, 0, 200, 132,
-        84, 121, 112, 101, 160, 145, 100,
+        TINY_STRUCT + Path::LEN,
+        Path::SIG,
+        TINY_LIST,
+        TINY_LIST,
+        TINY_LIST,
     ];
 
-    fn create_path() -> Path {
-        Path {
-            nodes: vec![Node {
-                identity: 1,
-                labels: vec![String::from("Node")],
-                properties: HashMap::new(),
-            }],
-            relationships: vec![UnboundRelationship {
-                identity: 200,
-                r#type: String::from("Type"),
-                properties: HashMap::new(),
-            }],
-            sequence: vec![100i64],
-        }
-    }
-
     #[test]
-    fn serialize() {
-        test::ser(&create_path(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_path(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+    fn bytes() {
+        test::ser_de::<Path>(BYTES);
+        test::de_ser(Path {
+            nodes: Vec::new(),
+            relationships: Vec::new(),
+            sequence: Vec::new(),
+        });
         test::de_err::<Path>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Path>(&[TINY_STRUCT, Path::SIG + 1]);
     }
 }

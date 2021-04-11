@@ -3,7 +3,8 @@ use serde::ser;
 
 impl ser::Serialize for Structure {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         match self {
             Self::Node(v) => v.serialize(serializer),
@@ -23,4 +24,3 @@ impl ser::Serialize for Structure {
         }
     }
 }
-

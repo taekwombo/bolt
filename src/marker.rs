@@ -40,7 +40,7 @@ pub enum Marker {
 
 impl Marker {
     fn size_exceeded(marker_type: &str, len: usize) -> SerdeError {
-        SerdeError::create(format!("Cannot pack {} with size {}.", marker_type, len))
+        SerdeError::create(format!("Cannot pack {} with size {}", marker_type, len))
     }
 
     pub(crate) fn inc_size(&mut self, size: usize) -> SerdeResult<()> {
@@ -52,7 +52,7 @@ impl Marker {
             Self::Struct(len) => *len += size,
             marker => {
                 return Err(SerdeError::create(format!(
-                    "Unexpected {}, expected Marker with size.",
+                    "Unexpected {}, expected Marker with size",
                     marker
                 )))
             }

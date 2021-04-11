@@ -79,31 +79,21 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
 #[cfg(test)]
 mod test_node {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{
+        constants::marker::{TINY_LIST, TINY_MAP, TINY_STRUCT},
+        test,
+    };
 
-    const BYTES: &[u8] = &[179, 78, 100, 145, 132, 110, 111, 100, 101, 160];
+    const BYTES: &[u8] = &[TINY_STRUCT + Node::LEN, Node::SIG, 0, TINY_LIST, TINY_MAP];
 
-    fn create_node() -> Node {
-        Node {
-            identity: 100,
-            labels: vec![String::from("node")],
+    #[test]
+    fn bytes() {
+        test::ser_de::<Node>(BYTES);
+        test::de_ser(Node {
+            identity: 0,
+            labels: Vec::new(),
             properties: HashMap::new(),
-        }
-    }
-
-    #[test]
-    fn serialize() {
-        test::ser(&create_node(), BYTES);
-    }
-
-    #[test]
-    fn deserialize() {
-        test::de(&create_node(), BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+        });
         test::de_err::<Node>(&BYTES[0..(BYTES.len() - 1)]);
-        test::de_err::<Node>(&[TINY_STRUCT, Node::SIG + 1]);
     }
 }

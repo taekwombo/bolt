@@ -1,6 +1,6 @@
 use super::Value;
-use serde::Serialize;
 use serde::ser::{self, SerializeMap, SerializeSeq};
+use serde::Serialize;
 
 impl ser::Serialize for Value {
     fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

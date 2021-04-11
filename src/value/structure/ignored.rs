@@ -64,23 +64,14 @@ impl<'de> de::Visitor<'de> for IgnoredVisitor {
 #[cfg(test)]
 mod test_ignored {
     use super::*;
-    use crate::{constants::marker::TINY_STRUCT, from_bytes, test, to_bytes};
+    use crate::{constants::marker::TINY_STRUCT, test};
 
-    const BYTES: &[u8] = &[TINY_STRUCT, Ignored::SIG];
-
-    #[test]
-    fn serialize() {
-        test::ser(&Ignored, BYTES);
-    }
+    const BYTES: &[u8] = &[TINY_STRUCT + Ignored::LEN, Ignored::SIG];
 
     #[test]
-    fn deserialize() {
-        test::de(&Ignored, BYTES);
-    }
-
-    #[test]
-    fn deserialize_fail() {
+    fn bytes() {
+        test::ser_de::<Ignored>(BYTES);
+        test::de_ser(Ignored);
         test::de_err::<Ignored>(&[TINY_STRUCT, Ignored::SIG + 1]);
-        test::de_err::<Ignored>(&[TINY_STRUCT, Ignored::SIG, 0]);
     }
 }

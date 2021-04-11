@@ -59,8 +59,6 @@ pub enum Structure {
     Reset(Reset),
     Run(Run),
     Success(Success),
-    //    TODO(@krnik): Is this variant necessary?
-    //    Custom { signature: u8, fields: Vec<Value> },
 }
 
 impl fmt::Display for Structure {

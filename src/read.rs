@@ -1,5 +1,5 @@
 use super::constants::marker::*;
-use super::error::{SerdeError, ErrorCode, SerdeResult};
+use super::error::{ErrorCode, SerdeError, SerdeResult};
 use super::marker::Marker;
 
 macro_rules! bytes_to_usize {
@@ -24,17 +24,17 @@ pub trait Unpacker<'a> {
     /// Sets virtual marker and/or value needed for Structure deserialization
     fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> SerdeResult<()>;
 
-    /// Scratches peeked bytes and consumes next N bytes.
-    /// If virtual value was set then the virtual value is returned instead.
+    /// Scratches peeked bytes and consumes next N bytes
+    /// If virtual value was set then the virtual value is returned instead
     fn consume_bytes(&mut self, len: usize) -> SerdeResult<&'a [u8]>;
 
     /// Returns Nth byte from current index if it exists
     fn peek_byte_nth_ahead(&self, pos_ahead: usize) -> SerdeResult<u8>;
 
-    /// Peek and consume marker.
+    /// Peek and consume marker
     fn consume_marker(&mut self) -> SerdeResult<Marker>;
 
-    // Peek marker byte.
+    // Peek marker
     fn peek_marker(&mut self) -> SerdeResult<Marker>;
 
     fn scratch_peeked(&mut self);
@@ -307,7 +307,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
 
             b => {
                 return Err(SerdeError::create(format!(
-                    "Peek error: byte {:x} is not a marker.",
+                    "Peek error: byte {:x} is not a marker",
                     b
                 )))
             }

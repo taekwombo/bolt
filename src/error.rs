@@ -70,20 +70,9 @@ impl From<std::string::FromUtf8Error> for SerdeError {
 pub(crate) enum ErrorCode {
     Message(String),
     ImplementationError(String),
-    ExpectedSizeMarker,
-    ExpectedString1Marker,
-    ExpectedStringMarker,
-    ExpectedIntMarker,
-    ExpectedFloatMarker,
-    ExpectedBoolMarker,
-    ExpectedBytesMarker,
-    UnexpectedType,
-    ExpectedListMarker,
-    UnexpectedEOSMarker,
     UnexpectedEndOfBytes,
     UnexpectedTrailingBytes,
     VirtualIllegalAssignment,
-    VirutalExpectedIntMarker,
 }
 
 impl fmt::Display for ErrorCode {
@@ -92,28 +81,17 @@ impl fmt::Display for ErrorCode {
             Self::Message(b_str) => write!(f, "{}", b_str),
             Self::ImplementationError(b_str) => write!(
                 f,
-                "{}\n. This is an implementation error, submit issue at: <address>",
+                "{}\n - This is an implementation error, check custom Serde implementations",
                 b_str
             ),
-            Self::ExpectedSizeMarker => write!(f, "Expected size."),
-            Self::ExpectedString1Marker => write!(f, "Expected String(1) Marker."),
-            Self::ExpectedStringMarker => write!(f, "Expected String Marker."),
-            Self::ExpectedIntMarker => write!(f, "Expected String Marker."),
-            Self::ExpectedFloatMarker => write!(f, "Expected Float Marker."),
-            Self::ExpectedBoolMarker => write!(f, "Expected Bool Marker."),
-            Self::ExpectedBytesMarker => write!(f, "Expected Bytes Marker."),
-            Self::UnexpectedType => write!(f, "Unexpected Type."),
-            Self::ExpectedListMarker => write!(f, "Expected List Marker."),
-            Self::UnexpectedEndOfBytes => write!(f, "Unexpected end of bytes."),
+            Self::UnexpectedEndOfBytes => write!(f, "Unexpected end of bytes"),
             Self::UnexpectedTrailingBytes => {
-                write!(f, "Unexpected trailing bytes left in the input.")
+                write!(f, "Unexpected trailing bytes left in the input")
             }
-            Self::UnexpectedEOSMarker => write!(f, "Unexpected End Of Stream marker."),
             Self::VirtualIllegalAssignment => write!(
                 f,
-                "Virtual marker and value must be consumed before setting new one."
+                "Virtual marker and value must be consumed before setting new one"
             ),
-            Self::VirutalExpectedIntMarker => write!(f, "Virtual"),
         }
     }
 }
