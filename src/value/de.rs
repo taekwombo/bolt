@@ -1,5 +1,6 @@
 use super::{Structure, Value};
 use crate::constants::STRUCTURE_SIG_KEY;
+use crate::deserializer::{StringDe, StructureStateDe};
 use crate::error::{SerdeError, SerdeResult};
 use serde::de::{Deserialize, IntoDeserializer};
 use serde::{de, forward_to_deserialize_any};
@@ -121,7 +122,7 @@ impl<'de> de::Deserialize<'de> for Value {
         deserializer.deserialize_any(ValueVisitor)
     }
 }
-//
+
 //impl<'de> de::Deserializer<'de> for Value {
 //    type Error = SerdeError;
 //
@@ -138,7 +139,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //            Self::List(_) => self.deserialize_seq(visitor),
 //            Self::Map(_) => self.deserialize_map(visitor),
 //            Self::Bytes(b) => visitor.visit_byte_buf(b.to_vec()),
-//            Self::Structure(v) => v.deserialize(self),
+//            Self::Structure(v) => de::Deserialize::deserialize(v),
 //        }
 //    }
 //
@@ -323,25 +324,34 @@ impl<'de> de::Deserialize<'de> for Value {
 //        }
 //    }
 //
-//    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> SerdeResult<V::Value>
+//    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> SerdeResult<V::Value>
 //    where
 //        V: de::Visitor<'de>,
 //    {
-//        // TODO(@krnik): Should it compare tuple size with Value::List size?
-//        self.deserialize_seq(visitor)
+//        match self {
+//            Self::List(vec) => {
+//                if len != vec.len() {
+//                    Err(Self::Error::create(format!("Cannot deserialize Value::List({}) into tuple with {} elements", vec.len(), len)))
+//                } else {
+//                    visitor.visit_seq(SeqDeserializer {
+//                        iter: vec.into_iter(),
+//                    })
+//                }
+//            },
+//            v => Err(errors::unexpected_type("Value::List", &v)),
+//        }
 //    }
 //
 //    fn deserialize_tuple_struct<V>(
 //        self,
 //        _name: &'static str,
-//        _len: usize,
+//        len: usize,
 //        visitor: V,
 //    ) -> SerdeResult<V::Value>
 //    where
 //        V: de::Visitor<'de>,
 //    {
-//        // TODO(@krnik): Should it compare tuple size with Value::List size?
-//        self.deserialize_seq(visitor)
+//        self.deserialize_tuple(len, visitor)
 //    }
 //
 //    fn deserialize_map<V>(self, visitor: V) -> SerdeResult<V::Value>
@@ -353,7 +363,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //                iter: m.into_iter(),
 //                value: None,
 //            }),
-//            Self::Structure(structure) => structure.deserialize(self),
+//            Self::Structure(structure) => de::Deserialize::deserialize(structure),
 //            v => Err(errors::unexpected_type("Value::Map", &v)),
 //        }
 //    }
@@ -384,20 +394,20 @@ impl<'de> de::Deserialize<'de> for Value {
 //                let mut iter = m.into_iter();
 //                let res = match iter.next() {
 //                    None => {
-//                        return Err(SerdeError::create(
+//                        return Err(Self::Error::create(
 //                            "Expected exactly 1 key for enum deserialization",
 //                        ))
 //                    }
 //                    Some(tp) => tp,
 //                };
 //                if iter.next().is_some() {
-//                    return Err(SerdeError::create(
+//                    return Err(Self::Error::create(
 //                        "Expected exactly 1 key for enum deserialization",
 //                    ));
 //                }
 //                res
 //            }
-//            _ => return Err(SerdeError::create("Map expected for enum deserializaton")),
+//            _ => return Err(Self::Error::create("Map expected for enum deserializaton")),
 //        };
 //        visitor.visit_enum(EnumAccess {
 //            variant,
@@ -422,6 +432,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //}
 //
 //struct SeqDeserializer {
+//    // TODO(@krnik): Check IntoIter vs IntoIterator vs Iterator
 //    iter: std::vec::IntoIter<Value>,
 //}
 //
@@ -435,7 +446,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //    {
 //        let v = visitor.visit_seq(&mut self)?;
 //        if self.iter.len() != 0 {
-//            return Err(SerdeError::create(
+//            return Err(Self::Error::create(
 //                "Value::List must have all of its elements deserialized",
 //            ));
 //        }
@@ -470,27 +481,6 @@ impl<'de> de::Deserialize<'de> for Value {
 //    }
 //}
 //
-//struct MapKeyDeserializer {
-//    key: String,
-//}
-//
-//impl<'de> de::Deserializer<'de> for MapKeyDeserializer {
-//    type Error = SerdeError;
-//
-//    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
-//    where
-//        V: de::Visitor<'de>,
-//    {
-//        visitor.visit_string(self.key)
-//    }
-//
-//    forward_to_deserialize_any! {
-//        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-//        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-//        tuple_struct map struct enum identifier ignored_any
-//    }
-//}
-//
 //struct MapAccess {
 //    iter: <std::collections::HashMap<String, Value> as IntoIterator>::IntoIter,
 //    value: Option<Value>,
@@ -507,7 +497,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //            None => Ok(None),
 //            Some((key, val)) => {
 //                self.value = Some(val);
-//                seed.deserialize(MapKeyDeserializer { key }).map(Some)
+//                seed.deserialize(StringDe::new(key)).map(Some)
 //            }
 //        }
 //    }
@@ -517,23 +507,16 @@ impl<'de> de::Deserialize<'de> for Value {
 //        V: de::DeserializeSeed<'de>,
 //    {
 //        match self.value.take() {
-//            None => Err(SerdeError::create("Value is missing")),
+//            None => Err(Self::Error::create("Value is missing")),
 //            Some(v) => seed.deserialize(v),
 //        }
 //    }
 //}
 //
-//#[derive(Debug)]
-//enum StructureDeserializerState {
-//    Signature,
-//    Fields,
-//    Done,
-//}
-//
 //struct StructureDeserializer {
 //    signature: u8,
 //    fields: Option<Vec<Value>>,
-//    state: StructureDeserializerState,
+//    state: StructureStateDe,
 //}
 //
 //impl StructureDeserializer {
@@ -541,7 +524,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //        Self {
 //            signature,
 //            fields: Some(fields),
-//            state: StructureDeserializerState::Signature,
+//            state: StructureStateDe::Signature,
 //        }
 //    }
 //}
@@ -553,21 +536,14 @@ impl<'de> de::Deserialize<'de> for Value {
 //    where
 //        K: de::DeserializeSeed<'de>,
 //    {
-//        println!("{:?}", self.state);
 //        match self.state {
-//            StructureDeserializerState::Signature => seed
-//                // TODO(@krnik): Use 'static string
-//                .deserialize(MapKeyDeserializer {
-//                    key: String::from("signature"),
-//                })
+//            StructureStateDe::Signature => seed
+//                .deserialize(self.state)
 //                .map(Some),
-//            StructureDeserializerState::Fields => seed
-//                // TODO(@krnik): Use 'static string
-//                .deserialize(MapKeyDeserializer {
-//                    key: String::from("fields"),
-//                })
+//            StructureStateDe::Fields => seed
+//                .deserialize(self.state)
 //                .map(Some),
-//            StructureDeserializerState::Done => Ok(None),
+//            StructureStateDe::Done => Ok(None),
 //        }
 //    }
 //
@@ -576,17 +552,17 @@ impl<'de> de::Deserialize<'de> for Value {
 //        V: de::DeserializeSeed<'de>,
 //    {
 //        match self.state {
-//            StructureDeserializerState::Signature => {
-//                self.state = StructureDeserializerState::Fields;
+//            StructureStateDe::Signature => {
+//                self.state = StructureStateDe::Fields;
 //                seed.deserialize(self.signature.into_deserializer())
 //            }
-//            StructureDeserializerState::Fields => {
-//                self.state = StructureDeserializerState::Done;
+//            StructureStateDe::Fields => {
+//                self.state = StructureStateDe::Done;
 //                seed.deserialize(SeqDeserializer {
 //                    iter: self.fields.take().expect("Value to exist").into_iter(),
 //                })
 //            }
-//            StructureDeserializerState::Done => unreachable!(),
+//            StructureStateDe::Done => Err(Self::Error::impl_err("StructureDeserializer cannot reach Done key state")),
 //        }
 //    }
 //}
@@ -630,7 +606,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //    {
 //        match self.value {
 //            Some(value) => seed.deserialize(value),
-//            None => Err(SerdeError::create(
+//            None => Err(Self::Error::create(
 //                "Unexpected unit variant, expected newtype variant.",
 //            )),
 //        }
@@ -648,7 +624,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //                "tuple variant (Value::List)",
 //                &other,
 //            )),
-//            None => Err(SerdeError::create(
+//            None => Err(Self::Error::create(
 //                "Unexpected unit variant, expected tuple variant.",
 //            )),
 //        }
@@ -671,7 +647,7 @@ impl<'de> de::Deserialize<'de> for Value {
 //                "struct variant (Value::Map)",
 //                &other,
 //            )),
-//            None => Err(SerdeError::create(
+//            None => Err(Self::Error::create(
 //                "Unexpected unit variant, expected struct variant.",
 //            )),
 //        }

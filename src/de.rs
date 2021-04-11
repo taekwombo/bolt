@@ -550,7 +550,6 @@ where
 }
 
 // TODO(@krnik): Share it with value/de, value/structure/de
-#[derive(Debug)]
 enum StructureAccessState {
     Signature,
     Fields,

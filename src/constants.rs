@@ -3,6 +3,7 @@ pub const STRUCTURE_SIG_KEY: &str = "__BOLT_STRUCTURE_SIGNATURE_KEY__";
 pub const STRUCTURE_SIG_KEY_B: &[u8] = b"__BOLT_STRUCTURE_SIGNATURE_KEY__";
 pub const STRUCTURE_FIELDS_KEY: &str = "__BOLT_STRUCTURE_FIELDS_KEY__";
 pub const STRUCTURE_FIELDS_KEY_B: &[u8] = b"__BOLT_STRUCTURE_FIELDS_KEY__";
+pub const SIG_KEY: &str = "signature";
 
 pub mod marker {
     pub const TINY_STRING: u8 = 0x80;
