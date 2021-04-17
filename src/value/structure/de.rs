@@ -1,6 +1,12 @@
 use super::*;
-use crate::constants::STRUCTURE_SIG_KEY;
-use serde::de::{self, Error};
+use crate::{
+    constants::STRUCTURE_SIG_KEY,
+    error::{SerdeError, SerdeResult},
+};
+use serde::{
+    de::{self, Error},
+    forward_to_deserialize_any,
+};
 use std::fmt;
 struct StructureVisitor;
 
@@ -122,16 +128,34 @@ impl<'de> de::Deserialize<'de> for Structure {
     }
 }
 
-//impl<'de> de::Deserializer<'de> for Structure {
-//    type Error = SerdeError;
-//
-//    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
-//    where
-//        V: de::Visitor<'de>
-//    {
-//        match self {
-//            // IMPL MapAccess + Deserializer for AckFailure :)
-//            Self::AckFailure => vitor.visit_map()
-//        }
-//    }
-//}
+impl<'de> de::Deserializer<'de> for Structure {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        match self {
+            Self::Node(de) => de.deserialize_any(visitor),
+            Self::Path(de) => de.deserialize_any(visitor),
+            Self::Relationship(de) => de.deserialize_any(visitor),
+            Self::UnboundRelationship(de) => de.deserialize_any(visitor),
+            Self::AckFailure(de) => de.deserialize_any(visitor),
+            Self::DiscardAll(de) => de.deserialize_any(visitor),
+            Self::Failure(de) => de.deserialize_any(visitor),
+            Self::Ignored(de) => de.deserialize_any(visitor),
+            Self::Init(de) => de.deserialize_any(visitor),
+            Self::PullAll(de) => de.deserialize_any(visitor),
+            Self::Record(de) => de.deserialize_any(visitor),
+            Self::Reset(de) => de.deserialize_any(visitor),
+            Self::Run(de) => de.deserialize_any(visitor),
+            Self::Success(de) => de.deserialize_any(visitor),
+        }
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}

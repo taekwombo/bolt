@@ -1,12 +1,10 @@
-use super::{BoltStructure, Empty};
+use super::{BoltStructure, Empty, Value};
 use crate::{
     constants::{SIG_KEY, STRUCTURE_NAME},
-    deserializer::{StructureAccess, StructureStateDe, ValueDe},
     error::{SerdeError, SerdeResult},
 };
 use serde::{
-    de,
-    forward_to_deserialize_any,
+    de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
 use std::fmt;
@@ -20,6 +18,10 @@ impl BoltStructure for DiscardAll {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = Empty;
+
+    fn into_value(self) -> Value {
+        value_map! {}
+    }
 }
 
 impl fmt::Display for DiscardAll {
@@ -71,11 +73,9 @@ impl<'de> de::Deserializer<'de> for DiscardAll {
 
     fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
-        V: de::Visitor<'de>
+        V: de::Visitor<'de>,
     {
-        visitor.visit_map(StructureAccess::new(vec![
-            (SIG_KEY.into(), ValueDe::number(Self::SIG)),
-        ]))
+        self.into_value().deserialize_map(visitor)
     }
 
     forward_to_deserialize_any! {

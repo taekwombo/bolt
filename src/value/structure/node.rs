@@ -1,7 +1,10 @@
-use super::BoltStructure;
-use crate::{constants::STRUCTURE_NAME, Value};
+use super::{BoltStructure, Value};
+use crate::{
+    constants::STRUCTURE_NAME,
+    error::{SerdeError, SerdeResult},
+};
 use serde::{
-    de,
+    de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
@@ -19,6 +22,14 @@ impl BoltStructure for Node {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = (i64, Vec<String>, HashMap<String, Value>);
+
+    fn into_value(self) -> Value {
+        value_map! {
+            "identity" => Value::I64(self.identity),
+            "labels" => Value::List(self.labels.into_iter().map(Value::String).collect()),
+            "properties" => Value::Map(self.properties),
+        }
+    }
 }
 
 impl fmt::Display for Node {
@@ -73,6 +84,23 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
             labels,
             properties,
         })
+    }
+}
+
+impl<'de> de::Deserializer<'de> for Node {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.into_value().deserialize_map(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct identifier enum ignored_any
     }
 }
 

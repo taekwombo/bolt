@@ -1,11 +1,14 @@
-use super::BoltStructure;
-use crate::constants::STRUCTURE_NAME;
+use super::{BoltStructure, Value};
+use crate::{
+    constants::STRUCTURE_NAME,
+    error::{SerdeError, SerdeResult},
+};
 use serde::{
-    de,
+    de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct Init {
@@ -19,6 +22,13 @@ impl BoltStructure for Init {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = (String, BasicAuth);
+
+    fn into_value(self) -> Value {
+        value_map! {
+            "client" => Value::String(self.client),
+            "auth" => self.auth.into_value(),
+        }
+    }
 }
 
 impl Init {
@@ -53,6 +63,14 @@ impl BasicAuth {
             principal: user,
             credentials: password,
         }
+    }
+
+    fn into_value(self) -> Value {
+        let mut map = HashMap::new();
+        map.insert(String::from("scheme"), Value::String(self.scheme));
+        map.insert(String::from("principal"), Value::String(self.principal));
+        map.insert(String::from("credentials"), Value::String(self.credentials));
+        Value::Map(map)
     }
 }
 
@@ -113,6 +131,23 @@ impl<'de> de::Visitor<'de> for InitVisitor {
     {
         let (client, auth) = structure_access!(map_access, Init);
         Ok(Init { client, auth })
+    }
+}
+
+impl<'de> de::Deserializer<'de> for Init {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.into_value().deserialize_map(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct identifier enum ignored_any
     }
 }
 
