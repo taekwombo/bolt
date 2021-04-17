@@ -84,4 +84,3 @@ impl<'de> de::Deserializer<'de> for AckFailure {
         tuple_struct map struct enum identifier ignored_any
     }
 }
-

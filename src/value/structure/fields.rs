@@ -126,13 +126,3 @@ impl<'de> de::Visitor<'de> for EmptyVisitor {
         }
     }
 }
-
-#[cfg(test)]
-mod t {
-    use super::*;
-    #[test]
-    fn p () {
-        println!("{:?}", Single(100));
-    }
-}
-

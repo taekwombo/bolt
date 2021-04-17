@@ -166,36 +166,15 @@ fn r#enum() {
     );
 }
 
-//#[test]
-//fn structure() {
-//    use super::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT};
+#[test]
+fn structure() {
+    use serde_bolt::value::structure::{AckFailure, BoltStructure, Structure};
 
-//    de(
-//        &[TINY_STRUCT, 10],
-//        Value::Structure {
-//            signature: 10,
-//            fields: Vec::new(),
-//        },
-//    );
-//    de(
-//        &[TINY_STRUCT, 0],
-//        Value::Structure {
-//            signature: 0,
-//            fields: Vec::with_capacity(10),
-//        },
-//    );
-//    de(
-//        &bytes!(
-//            [TINY_STRUCT + 1, 155, TINY_MAP + 1, TINY_STRING + 3],
-//            b"key".to_vec(),
-//            [100]
-//        ),
-//        Value::Structure {
-//            signature: 155,
-//            fields: vec![Value::Map(map! { "key" => Value::I64(100) })],
-//        },
-//    );
-//}
+    de(
+        &[TINY_STRUCT, AckFailure::SIG],
+        Value::Structure(Structure::AckFailure(AckFailure)),
+    );
+}
 
 #[test]
 fn skip_unknown() {

@@ -104,4 +104,3 @@ impl<'de> de::Deserializer<'de> for UnboundRelationship {
         tuple_struct map struct identifier enum ignored_any
     }
 }
-

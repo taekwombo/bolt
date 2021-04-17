@@ -84,7 +84,6 @@ impl ser::Serializer for Serializer {
     fn serialize_u64(self, value: u64) -> SerdeResult<Self::Ok> {
         use std::convert::TryFrom;
 
-        // TODO(@krnik) - unify this error with /src/ser.rs conversion errors
         let val_int = i64::try_from(value).map_err(|_| {
             SerdeError::create(format!("Attempt to convert {}u64 into i63 failed", value))
         })?;
@@ -145,13 +144,15 @@ impl ser::Serializer for Serializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         value: &T,
     ) -> SerdeResult<Self::Ok>
     where
         T: ser::Serialize,
     {
-        value.serialize(self)
+        let mut map = HashMap::new();
+        map.insert(String::from(variant), to_value(value)?);
+        Ok(Value::Map(map))
     }
 
     fn serialize_none(self) -> SerdeResult<Self::Ok> {
@@ -183,13 +184,13 @@ impl ser::Serializer for Serializer {
 
     fn serialize_tuple_variant(
         self,
-        name: &'static str,
+        _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         _len: usize,
     ) -> SerdeResult<Self::SerializeTupleVariant> {
         Ok(SerializeTupleVariant {
-            name: name.to_owned(),
+            name: variant.to_owned(),
             vec: Vec::new(),
         })
     }
@@ -243,8 +244,6 @@ impl ser::SerializeSeq for SerializeSeq {
     where
         T: ser::Serialize,
     {
-        // TODO: Implement to_value
-        // https://github.com/serde-rs/json/blob/master/src/value/mod.rs#L952
         self.vec.push(to_value(&value)?);
         Ok(())
     }
@@ -345,10 +344,11 @@ impl ser::SerializeStruct for SerializeMap {
     type Ok = Value;
     type Error = SerdeError;
 
-    fn serialize_field<T: ?Sized>(&mut self, _key: &'static str, value: &T) -> SerdeResult<()>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
     where
         T: ser::Serialize,
     {
+        self.key.replace(String::from(key));
         ser::SerializeMap::serialize_value(self, value)
     }
 

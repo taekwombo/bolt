@@ -104,4 +104,3 @@ impl<'de> de::Deserializer<'de> for Path {
         tuple_struct map struct identifier enum ignored_any
     }
 }
-

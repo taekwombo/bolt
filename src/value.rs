@@ -8,7 +8,7 @@ use serde_bytes::ByteBuf;
 use std::collections::HashMap;
 use std::fmt;
 
-use structure::Structure;
+pub use structure::Structure;
 
 #[derive(Debug, PartialEq)]
 pub enum Value {

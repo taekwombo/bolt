@@ -2,7 +2,6 @@ use super::constants::STRUCTURE_NAME;
 use super::error::{SerdeError, SerdeResult};
 use super::marker::Marker;
 use serde::{ser, Serialize};
-use std::convert::TryFrom;
 
 #[derive(Clone, Debug)]
 pub struct Serializer {
@@ -57,24 +56,23 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_u8(self, value: u8) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
+        self.output.append(&mut Marker::I64(value as i64).to_vec()?);
         Ok(())
     }
 
     fn serialize_u16(self, value: u16) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
+        self.output.append(&mut Marker::I64(value as i64).to_vec()?);
         Ok(())
     }
 
     fn serialize_u32(self, value: u32) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::I64(i64::try_from(value).unwrap()).to_vec()?);
+        self.output.append(&mut Marker::I64(value as i64).to_vec()?);
         Ok(())
     }
 
     fn serialize_u64(self, value: u64) -> SerdeResult<Self::Ok> {
+        use std::convert::TryFrom;
+
         let val_int = i64::try_from(value).map_err(|_| {
             SerdeError::create(format!("Attempt to convert {}u64 into i64 failed", value))
         })?;

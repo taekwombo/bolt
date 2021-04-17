@@ -1,4 +1,5 @@
-// TODO: Documentation with examples
+/// Provide serde::de::Visitor::visit_map implementation
+/// statements for deserializing Structures.
 macro_rules! structure_access {
     ($map_access:ident, $structure:ident, no_sig_key) => {{
         check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
@@ -24,6 +25,8 @@ macro_rules! structure_access {
     }};
 }
 
+/// Expands to statements checking whether key or signature
+/// of structure has expected value.
 macro_rules! check {
     (__key, $map_access:ident, $expected:path) => {{
         match $map_access.next_key::<&str>()? {
@@ -48,6 +51,7 @@ macro_rules! check {
     }};
 }
 
+/// Expands into error statement for Structure key deserialization.
 macro_rules! unexpected_key_access {
     ($key:ident, $expected:expr) => {
         return Err(<V::Error as ::serde::de::Error>::custom(format!(
@@ -63,12 +67,16 @@ macro_rules! unexpected_key_access {
     };
 }
 
+/// Expands into expression returning u64 with
+/// first 8 bits havin value of Structrue signature,
+/// and other bits having value of its lenght.
 macro_rules! serialize_length {
     ($sig:path, $len:path) => {
         (($sig as usize) << 56) + ($len as usize)
     };
 }
 
+/// Expands into Value::Map
 macro_rules! value_map {
     ($($key:literal => $value:expr,)*) => {
         {

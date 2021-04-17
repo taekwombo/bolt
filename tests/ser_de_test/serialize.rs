@@ -168,32 +168,12 @@ fn r#enum() {
     );
 }
 
-//#[test]
-//fn structure() {
-//    use super::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT};
-//    ser(
-//        Value::Structure {
-//            signature: 10,
-//            fields: Vec::new(),
-//        },
-//        &[TINY_STRUCT, 10],
-//    );
-//    ser(
-//        Value::Structure {
-//            signature: 0,
-//            fields: Vec::with_capacity(10),
-//        },
-//        &[TINY_STRUCT, 0],
-//    );
-//    ser(
-//        Value::Structure {
-//            signature: 155,
-//            fields: vec![Value::Map(map! { "key" => Value::I64(100) })],
-//        },
-//        &bytes!(
-//            [TINY_STRUCT + 1, 155, TINY_MAP + 1, TINY_STRING + 3],
-//            b"key".to_vec(),
-//            [100]
-//        ),
-//    );
-//}
+#[test]
+fn structure() {
+    use serde_bolt::value::structure::{AckFailure, BoltStructure, Structure};
+
+    ser(
+        Value::Structure(Structure::AckFailure(AckFailure)),
+        &[TINY_STRUCT, AckFailure::SIG],
+    );
+}
