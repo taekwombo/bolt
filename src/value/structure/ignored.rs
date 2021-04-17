@@ -85,17 +85,3 @@ impl<'de> de::Deserializer<'de> for Ignored {
     }
 }
 
-#[cfg(test)]
-mod test_ignored {
-    use super::*;
-    use crate::{constants::marker::TINY_STRUCT, test};
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Ignored::LEN, Ignored::SIG];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Ignored>(BYTES);
-        test::de_ser(Ignored);
-        test::de_err::<Ignored>(&[TINY_STRUCT, Ignored::SIG + 1]);
-    }
-}

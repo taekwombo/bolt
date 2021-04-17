@@ -104,24 +104,3 @@ impl<'de> de::Deserializer<'de> for Node {
     }
 }
 
-#[cfg(test)]
-mod test_node {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_LIST, TINY_MAP, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Node::LEN, Node::SIG, 0, TINY_LIST, TINY_MAP];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Node>(BYTES);
-        test::de_ser(Node {
-            identity: 0,
-            labels: Vec::new(),
-            properties: HashMap::new(),
-        });
-        test::de_err::<Node>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

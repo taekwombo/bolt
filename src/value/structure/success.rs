@@ -92,22 +92,3 @@ impl<'de> de::Deserializer<'de> for Success {
     }
 }
 
-#[cfg(test)]
-mod test_success {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Success::LEN, Success::SIG, TINY_MAP];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Success>(BYTES);
-        test::de_ser(Success {
-            metadata: HashMap::new(),
-        });
-        test::de_err::<Success>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

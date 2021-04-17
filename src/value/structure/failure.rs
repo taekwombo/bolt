@@ -1,6 +1,6 @@
 use super::{BoltStructure, Single};
 use crate::{
-    constants::{SIG_KEY, STRUCTURE_NAME},
+    constants::STRUCTURE_NAME,
     error::{SerdeError, SerdeResult},
     Value,
 };
@@ -93,22 +93,3 @@ impl<'de> de::Deserializer<'de> for Failure {
     }
 }
 
-#[cfg(test)]
-mod test_failure {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Failure::LEN, Failure::SIG, TINY_MAP];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Failure>(BYTES);
-        test::de_ser(Failure {
-            metadata: HashMap::new(),
-        });
-        test::de_err::<Failure>(&[TINY_STRUCT + 1, Failure::SIG + 1, TINY_MAP]);
-    }
-}

@@ -116,34 +116,3 @@ impl<'de> de::Deserializer<'de> for Relationship {
     }
 }
 
-#[cfg(test)]
-mod test_relationship {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[
-        TINY_STRUCT + Relationship::LEN,
-        Relationship::SIG,
-        0,
-        0,
-        0,
-        TINY_STRING,
-        TINY_MAP,
-    ];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Relationship>(BYTES);
-        test::de_ser(Relationship {
-            identity: 0,
-            start_node_identity: 0,
-            end_node_identity: 0,
-            r#type: String::new(),
-            properties: HashMap::new(),
-        });
-        test::de_err::<Relationship>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

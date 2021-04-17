@@ -85,17 +85,3 @@ impl<'de> de::Deserializer<'de> for Reset {
     }
 }
 
-#[cfg(test)]
-mod test_reset {
-    use super::*;
-    use crate::{constants::marker::TINY_STRUCT, test};
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Reset::LEN, Reset::SIG];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Reset>(BYTES);
-        test::de_ser(Reset);
-        test::de_err::<Reset>(&[TINY_STRUCT, Reset::SIG + 1]);
-    }
-}

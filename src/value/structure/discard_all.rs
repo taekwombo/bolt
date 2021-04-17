@@ -1,6 +1,6 @@
 use super::{BoltStructure, Empty, Value};
 use crate::{
-    constants::{SIG_KEY, STRUCTURE_NAME},
+    constants::STRUCTURE_NAME,
     error::{SerdeError, SerdeResult},
 };
 use serde::{
@@ -85,20 +85,3 @@ impl<'de> de::Deserializer<'de> for DiscardAll {
     }
 }
 
-#[cfg(test)]
-mod test_discard_all {
-    use super::*;
-    use crate::{constants::marker::TINY_STRUCT, test};
-
-    const BYTES: &[u8] = &[TINY_STRUCT + DiscardAll::LEN, DiscardAll::SIG];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<DiscardAll>(BYTES);
-        test::de_ser(DiscardAll);
-        test::de_err::<DiscardAll>(&[TINY_STRUCT, DiscardAll::SIG + 1]);
-    }
-
-    #[test]
-    fn bytes_fail() {}
-}
