@@ -1,13 +1,13 @@
 use super::{BoltStructure, Empty, Value};
 use crate::{
-    constants::{SIG_KEY, STRUCTURE_NAME},
+    constants::STRUCTURE_NAME,
     error::{SerdeError, SerdeResult},
 };
 use serde::{
     de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct AckFailure;
@@ -85,18 +85,3 @@ impl<'de> de::Deserializer<'de> for AckFailure {
     }
 }
 
-// TODO(@krnik): Move such tests to the /tests folder
-#[cfg(test)]
-mod test_ack_failure {
-    use super::*;
-    use crate::{constants::marker::TINY_STRUCT, test};
-
-    const BYTES: &[u8] = &[TINY_STRUCT + AckFailure::LEN, AckFailure::SIG];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<AckFailure>(BYTES);
-        test::de_ser(AckFailure);
-        test::de_err::<AckFailure>(&[TINY_STRUCT, AckFailure::SIG + 1]);
-    }
-}

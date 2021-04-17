@@ -99,23 +99,3 @@ impl<'de> de::Deserializer<'de> for Run {
     }
 }
 
-#[cfg(test)]
-mod test_run {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Run::LEN, Run::SIG, TINY_STRING, TINY_MAP];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Run>(BYTES);
-        test::de_ser(Run {
-            statement: String::new(),
-            parameters: HashMap::new(),
-        });
-        test::de_err::<Run>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

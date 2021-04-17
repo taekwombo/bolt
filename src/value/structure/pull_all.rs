@@ -85,17 +85,3 @@ impl<'de> de::Deserializer<'de> for PullAll {
     }
 }
 
-#[cfg(test)]
-mod test_pull_all {
-    use super::*;
-    use crate::{constants::marker::TINY_STRUCT, test};
-
-    const BYTES: &[u8] = &[TINY_STRUCT + PullAll::LEN, PullAll::SIG];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<PullAll>(BYTES);
-        test::de_ser(PullAll);
-        test::de_err::<PullAll>(&[TINY_STRUCT, PullAll::SIG + 1]);
-    }
-}

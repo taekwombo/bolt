@@ -44,6 +44,17 @@ where
     assert!(result.is_err());
 }
 
+pub fn ser_de<'de, T>(bytes: &'de [u8])
+where
+    T: Deserialize<'de> + Debug + PartialEq + Serialize,
+{
+    let value = from_bytes::<T>(bytes);
+    assert!(value.is_ok());
+    let byte_value = to_bytes(&value.expect("To be OK"));
+    assert!(byte_value.is_ok());
+    assert_eq!(byte_value.expect("To be OK"), bytes);
+}
+
 fn de<'de, T>(bytes: &'de [u8], compare: T)
 where
     T: Deserialize<'de> + PartialEq + Debug,
@@ -62,6 +73,18 @@ where
 {
     let result = from_bytes::<'de, D>(bytes);
     assert!(result.is_err());
+}
+
+pub fn de_ser<T>(value: T)
+where
+    T: for<'de> Deserialize<'de> + Debug + PartialEq + Serialize,
+{
+    let bytes = to_bytes::<T>(&value);
+    assert!(bytes.is_ok());
+    let bytes = bytes.expect("To be OK");
+    let serialized = from_bytes::<T>(&bytes);
+    assert!(serialized.is_ok());
+    assert_eq!(serialized.unwrap(), value);
 }
 
 mod ser_de_test;

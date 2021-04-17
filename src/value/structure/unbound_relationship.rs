@@ -105,30 +105,3 @@ impl<'de> de::Deserializer<'de> for UnboundRelationship {
     }
 }
 
-#[cfg(test)]
-mod test_unbound_relationship {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_MAP, TINY_STRING, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[
-        TINY_STRUCT + UnboundRelationship::LEN,
-        UnboundRelationship::SIG,
-        0,
-        TINY_STRING,
-        TINY_MAP,
-    ];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<UnboundRelationship>(BYTES);
-        test::de_ser(UnboundRelationship {
-            identity: 0,
-            r#type: String::new(),
-            properties: HashMap::new(),
-        });
-        test::de_err::<UnboundRelationship>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

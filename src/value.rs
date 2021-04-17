@@ -1,7 +1,8 @@
 mod de;
 mod ser;
-mod structure;
+pub mod structure;
 pub use de::from_value;
+pub use ser::to_value;
 
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;

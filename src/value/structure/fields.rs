@@ -7,7 +7,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 #[derive(Debug, PartialEq)]
-pub struct Single<T>(T);
+pub struct Single<T>(pub T);
 
 impl<T> Single<T> {
     pub(crate) fn value(self) -> T {
@@ -128,30 +128,11 @@ impl<'de> de::Visitor<'de> for EmptyVisitor {
 }
 
 #[cfg(test)]
-mod test_fields {
+mod t {
     use super::*;
-    use crate::{constants::marker::TINY_LIST, test};
-
-    mod empty {
-        use super::*;
-
-        #[test]
-        fn bytes() {
-            test::ser_de::<Empty>(&[TINY_LIST]);
-            test::de_ser(Empty);
-            test::de_err::<Empty>(&[TINY_LIST + 1, 0]);
-        }
-    }
-
-    mod single {
-        use super::*;
-
-        #[test]
-        fn bytes() {
-            test::ser_de::<Single<u8>>(&[TINY_LIST + 1, 0]);
-            test::de_ser(Single(100u8));
-            test::de_err::<Single<u8>>(&[TINY_LIST]);
-            test::de_err::<Single<u8>>(&[TINY_LIST + 2, 0, 0]);
-        }
+    #[test]
+    fn p () {
+        println!("{:?}", Single(100));
     }
 }
+

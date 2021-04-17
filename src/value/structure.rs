@@ -20,23 +20,23 @@ mod success;
 mod unbound_relationship;
 
 use super::Value;
-use ack_failure::AckFailure;
-use discard_all::DiscardAll;
-use failure::Failure;
-use fields::{Empty, Single};
-use ignored::Ignored;
-use init::Init;
-use node::Node;
-use path::Path;
-use pull_all::PullAll;
-use record::Record;
-use relationship::Relationship;
-use reset::Reset;
-use run::Run;
-use success::Success;
-use unbound_relationship::UnboundRelationship;
+pub use ack_failure::AckFailure;
+pub use discard_all::DiscardAll;
+pub use failure::Failure;
+pub use fields::{Empty, Single};
+pub use ignored::Ignored;
+pub use init::Init;
+pub use node::Node;
+pub use path::Path;
+pub use pull_all::PullAll;
+pub use record::Record;
+pub use relationship::Relationship;
+pub use reset::Reset;
+pub use run::Run;
+pub use success::Success;
+pub use unbound_relationship::UnboundRelationship;
 
-trait BoltStructure {
+pub trait BoltStructure {
     const SIG: u8;
     const LEN: u8;
     const SERIALIZE_LEN: usize;

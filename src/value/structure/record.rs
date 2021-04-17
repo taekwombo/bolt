@@ -92,20 +92,3 @@ impl<'de> de::Deserializer<'de> for Record {
     }
 }
 
-#[cfg(test)]
-mod test_record {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_LIST, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[TINY_STRUCT + Record::LEN, Record::SIG, TINY_LIST + 1, 1];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Record>(BYTES);
-        test::de_ser(Record { fields: Vec::new() });
-        test::de_err::<Record>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

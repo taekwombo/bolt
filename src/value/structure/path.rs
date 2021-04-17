@@ -105,30 +105,3 @@ impl<'de> de::Deserializer<'de> for Path {
     }
 }
 
-#[cfg(test)]
-mod test_path {
-    use super::*;
-    use crate::{
-        constants::marker::{TINY_LIST, TINY_STRUCT},
-        test,
-    };
-
-    const BYTES: &[u8] = &[
-        TINY_STRUCT + Path::LEN,
-        Path::SIG,
-        TINY_LIST,
-        TINY_LIST,
-        TINY_LIST,
-    ];
-
-    #[test]
-    fn bytes() {
-        test::ser_de::<Path>(BYTES);
-        test::de_ser(Path {
-            nodes: Vec::new(),
-            relationships: Vec::new(),
-            sequence: Vec::new(),
-        });
-        test::de_err::<Path>(&BYTES[0..(BYTES.len() - 1)]);
-    }
-}

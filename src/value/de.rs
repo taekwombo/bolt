@@ -1,8 +1,8 @@
 use super::{Structure, Value};
 use crate::constants::STRUCTURE_SIG_KEY;
-use crate::deserializer::{StringDe, StructureStateDe};
+use crate::deserializer::StringDe;
 use crate::error::{SerdeError, SerdeResult};
-use serde::de::{Deserialize, IntoDeserializer};
+use serde::de::IntoDeserializer;
 use serde::{de, forward_to_deserialize_any};
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;
@@ -513,58 +513,6 @@ impl<'de> de::MapAccess<'de> for MapAccess {
         match self.value.take() {
             None => Err(Self::Error::create("Value is missing")),
             Some(v) => seed.deserialize(v),
-        }
-    }
-}
-
-struct StructureDeserializer {
-    signature: u8,
-    fields: Option<Vec<Value>>,
-    state: StructureStateDe,
-}
-
-impl StructureDeserializer {
-    fn new(signature: u8, fields: Vec<Value>) -> Self {
-        Self {
-            signature,
-            fields: Some(fields),
-            state: StructureStateDe::Signature,
-        }
-    }
-}
-
-impl<'de> de::MapAccess<'de> for StructureDeserializer {
-    type Error = SerdeError;
-
-    fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
-    where
-        K: de::DeserializeSeed<'de>,
-    {
-        match self.state {
-            StructureStateDe::Signature => seed.deserialize(self.state).map(Some),
-            StructureStateDe::Fields => seed.deserialize(self.state).map(Some),
-            StructureStateDe::Done => Ok(None),
-        }
-    }
-
-    fn next_value_seed<V>(&mut self, seed: V) -> SerdeResult<V::Value>
-    where
-        V: de::DeserializeSeed<'de>,
-    {
-        match self.state {
-            StructureStateDe::Signature => {
-                self.state = StructureStateDe::Fields;
-                seed.deserialize(self.signature.into_deserializer())
-            }
-            StructureStateDe::Fields => {
-                self.state = StructureStateDe::Done;
-                seed.deserialize(SeqDeserializer {
-                    iter: self.fields.take().expect("Value to exist").into_iter(),
-                })
-            }
-            StructureStateDe::Done => Err(Self::Error::impl_err(
-                "StructureDeserializer cannot reach Done key state",
-            )),
         }
     }
 }
