@@ -92,4 +92,3 @@ impl<'de> de::Deserializer<'de> for Failure {
         tuple_struct map struct identifier enum ignored_any
     }
 }
-

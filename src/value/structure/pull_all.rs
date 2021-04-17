@@ -84,4 +84,3 @@ impl<'de> de::Deserializer<'de> for PullAll {
         tuple_struct map struct identifier enum ignored_any
     }
 }
-

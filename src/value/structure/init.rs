@@ -150,4 +150,3 @@ impl<'de> de::Deserializer<'de> for Init {
         tuple_struct map struct identifier enum ignored_any
     }
 }
-

@@ -93,9 +93,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
 
     fn consume_marker(&mut self) -> SerdeResult<Marker> {
         let marker = self.peek_marker()?;
-
         self.scratch_peeked();
-
         Ok(marker)
     }
 

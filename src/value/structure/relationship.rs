@@ -115,4 +115,3 @@ impl<'de> de::Deserializer<'de> for Relationship {
         tuple_struct map struct identifier enum ignored_any
     }
 }
-
