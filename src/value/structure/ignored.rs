@@ -1,7 +1,10 @@
-use super::{BoltStructure, Empty};
-use crate::constants::STRUCTURE_NAME;
+use super::{BoltStructure, Empty, Value};
+use crate::{
+    constants::STRUCTURE_NAME,
+    error::{SerdeError, SerdeResult},
+};
 use serde::{
-    de,
+    de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
 use std::fmt;
@@ -15,6 +18,10 @@ impl BoltStructure for Ignored {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = Empty;
+
+    fn into_value(self) -> Value {
+        value_map! {}
+    }
 }
 
 impl fmt::Display for Ignored {
@@ -58,6 +65,23 @@ impl<'de> de::Visitor<'de> for IgnoredVisitor {
     {
         structure_access!(map_access, Ignored);
         Ok(Ignored)
+    }
+}
+
+impl<'de> de::Deserializer<'de> for Ignored {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.into_value().deserialize_map(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct identifier enum ignored_any
     }
 }
 

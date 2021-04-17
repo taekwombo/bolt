@@ -1,7 +1,10 @@
-use super::{BoltStructure, Single};
-use crate::{constants::STRUCTURE_NAME, Value};
+use super::{BoltStructure, Single, Value};
+use crate::{
+    constants::STRUCTURE_NAME,
+    error::{SerdeError, SerdeResult},
+};
 use serde::{
-    de,
+    de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
 use std::{collections::HashMap, fmt};
@@ -17,6 +20,12 @@ impl BoltStructure for Success {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = Single<HashMap<String, Value>>;
+
+    fn into_value(self) -> Value {
+        value_map! {
+            "metadata" => Value::Map(self.metadata),
+        }
+    }
 }
 
 impl fmt::Display for Success {
@@ -63,6 +72,23 @@ impl<'de> de::Visitor<'de> for SuccessVisitor {
         Ok(Success {
             metadata: fields.value(),
         })
+    }
+}
+
+impl<'de> de::Deserializer<'de> for Success {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.into_value().deserialize_map(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct identifier enum ignored_any
     }
 }
 

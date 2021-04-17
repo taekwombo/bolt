@@ -19,6 +19,7 @@ mod run;
 mod success;
 mod unbound_relationship;
 
+use super::Value;
 use ack_failure::AckFailure;
 use discard_all::DiscardAll;
 use failure::Failure;
@@ -41,6 +42,8 @@ trait BoltStructure {
     const SERIALIZE_LEN: usize;
 
     type Fields;
+
+    fn into_value(self) -> Value;
 }
 
 #[derive(Debug, PartialEq)]

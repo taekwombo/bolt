@@ -1,15 +1,13 @@
-use super::{BoltStructure, Empty};
+use super::{BoltStructure, Empty, Value};
 use crate::{
     constants::{SIG_KEY, STRUCTURE_NAME},
-    deserializer::{StructureAccess, StructureStateDe, ValueDe},
     error::{SerdeError, SerdeResult},
 };
 use serde::{
-    de,
-    forward_to_deserialize_any,
+    de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct AckFailure;
@@ -20,6 +18,10 @@ impl BoltStructure for AckFailure {
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
     type Fields = Empty;
+
+    fn into_value(self) -> Value {
+        value_map! {}
+    }
 }
 
 impl fmt::Display for AckFailure {
@@ -71,17 +73,15 @@ impl<'de> de::Deserializer<'de> for AckFailure {
 
     fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
     where
-        V: de::Visitor<'de>
+        V: de::Visitor<'de>,
     {
-        visitor.visit_map(StructureAccess::new(vec![
-            (SIG_KEY.into(), ValueDe::number(Self::SIG)),
-        ]))
+        self.into_value().deserialize_map(visitor)
     }
 
     forward_to_deserialize_any! {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct identifier enum ignored_any
+        tuple_struct map struct enum identifier ignored_any
     }
 }
 
