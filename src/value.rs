@@ -10,6 +10,9 @@ use std::fmt;
 
 pub use structure::Structure;
 
+/// Represents any valid [Bolt value].
+///
+/// [Bolt value]: https://boltprotocol.org/v1/#overview_2
 #[derive(Debug, PartialEq)]
 pub enum Value {
     Null,

@@ -37,7 +37,6 @@
 //! #
 //! # const BYTES: &[u8] = &[162, 136, 117, 115, 101, 114, 110, 97, 109, 101, 132, 74, 111, 104, 110, 136, 112, 97, 115, 115, 119, 111, 114, 100, 131, 68, 111, 101];
 //! #
-//!
 //! fn untyped_example(bytes: &[u8]) -> SerdeResult<()> {
 //!     match from_bytes(bytes)? {
 //!         Value::Map(map) => {
@@ -56,8 +55,6 @@
 //! ```
 //! [website]: https://boltprotocol.org/.
 //! [`Value`]: value::Value
-
-#![warn(missing_docs)]
 
 #[macro_use]
 mod macros;
