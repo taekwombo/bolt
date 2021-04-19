@@ -47,6 +47,9 @@ pub trait BoltStructure {
     fn into_value(self) -> Value;
 }
 
+/// Represents any possible [`Bolt Structure`].
+///
+/// [`Bolt Structure`]: https://boltprotocol.org/v1/#structures
 #[derive(Debug, PartialEq)]
 pub enum Structure {
     Node(Node),
