@@ -1,10 +1,13 @@
-pub const STRUCTURE_NAME: &str = "__BOLT_STRUCTURE_SERDE_NAME__";
-pub const STRUCTURE_SIG_KEY: &str = "__BOLT_STRUCTURE_SIGNATURE_KEY__";
-pub const STRUCTURE_SIG_KEY_B: &[u8] = b"__BOLT_STRUCTURE_SIGNATURE_KEY__";
-pub const STRUCTURE_FIELDS_KEY: &str = "__BOLT_STRUCTURE_FIELDS_KEY__";
-pub const STRUCTURE_FIELDS_KEY_B: &[u8] = b"__BOLT_STRUCTURE_FIELDS_KEY__";
-pub const SIG_KEY: &str = "signature";
+pub(crate) const STRUCTURE_NAME: &str = "__BOLT_STRUCTURE_SERDE_NAME__";
+pub(crate) const STRUCTURE_SIG_KEY: &str = "__BOLT_STRUCTURE_SIGNATURE_KEY__";
+pub(crate) const STRUCTURE_SIG_KEY_B: &[u8] = b"__BOLT_STRUCTURE_SIGNATURE_KEY__";
+pub(crate) const STRUCTURE_FIELDS_KEY: &str = "__BOLT_STRUCTURE_FIELDS_KEY__";
+pub(crate) const STRUCTURE_FIELDS_KEY_B: &[u8] = b"__BOLT_STRUCTURE_FIELDS_KEY__";
+pub(crate) const SIG_KEY: &str = "signature";
 
+/// [Marker] constants module.
+///
+/// [Marker]: https://boltprotocol.org/v1/#markers
 pub mod marker {
     pub const TINY_STRING: u8 = 0x80;
     pub const TINY_STRING_MAX: u8 = 0x8F;
@@ -41,6 +44,9 @@ pub mod marker {
     pub const END_OF_STREAM: u8 = 0xDF;
 }
 
+/// [Signature] constants module.
+///
+/// [Signature]: https://boltprotocol.org/v1/#signature
 pub mod signature {
     pub const MSG_INIT: u8 = 0x01;
     pub const MSG_RUN: u8 = 0x10;

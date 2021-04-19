@@ -327,7 +327,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
 }
 
 #[derive(Debug)]
-pub struct ByteReader<'a> {
+pub(crate) struct ByteReader<'a> {
     pub bytes: &'a [u8],
     pub index: usize,
     pub peeked: usize,
