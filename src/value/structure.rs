@@ -26,7 +26,7 @@ pub use discard_all::DiscardAll;
 pub use failure::Failure;
 pub use fields::{Empty, Single};
 pub use ignored::Ignored;
-pub use init::Init;
+pub use init::{BasicAuth, Init};
 pub use node::Node;
 pub use path::Path;
 pub use pull_all::PullAll;
