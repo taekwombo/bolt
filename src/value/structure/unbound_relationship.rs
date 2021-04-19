@@ -9,7 +9,6 @@ use serde::{
 };
 use std::{collections::HashMap, fmt};
 
-// To implement deserializer for unbound relationships use Value?
 #[derive(Debug, PartialEq)]
 pub struct UnboundRelationship {
     pub identity: i64,

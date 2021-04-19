@@ -63,7 +63,14 @@ fn init() {
     let s = String::from("test");
 
     ser_de::<Init>(BYTES);
-    de_ser(Init::new(s.clone(), s.clone(), s.clone()));
+    de_ser(Init {
+        client: s.clone(),
+        auth: BasicAuth {
+            scheme: String::from("basic"),
+            principal: s.clone(),
+            credentials: s.clone(),
+        }
+    });
     de_err::<Init>(&BYTES[0..(BYTES.len() - 1)]);
 }
 

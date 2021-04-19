@@ -31,15 +31,6 @@ impl BoltStructure for Init {
     }
 }
 
-impl Init {
-    pub fn new(client: String, user: String, password: String) -> Self {
-        Self {
-            client,
-            auth: BasicAuth::new(user, password),
-        }
-    }
-}
-
 impl fmt::Display for Init {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Init")
@@ -57,14 +48,6 @@ pub struct BasicAuth {
 }
 
 impl BasicAuth {
-    pub fn new(user: String, password: String) -> Self {
-        Self {
-            scheme: String::from("basic"),
-            principal: user,
-            credentials: password,
-        }
-    }
-
     fn into_value(self) -> Value {
         let mut map = HashMap::new();
         map.insert(String::from("scheme"), Value::String(self.scheme));
