@@ -81,7 +81,7 @@ macro_rules! value_map {
     ($($key:literal => $value:expr,)*) => {
         {
             let mut __map = ::std::collections::HashMap::new();
-            __map.insert(String::from("signature"), $crate::value::Value::I64(<Self as $crate::value::structure::BoltStructure>::SIG as i64));
+            __map.insert(String::from($crate::constants::SIG_KEY), $crate::value::Value::I64(<Self as $crate::value::structure::BoltStructure>::SIG as i64));
             $(__map.insert(String::from($key), $value);)*
             $crate::value::Value::Map(__map)
         }
