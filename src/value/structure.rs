@@ -45,12 +45,26 @@ pub trait BoltStructure {
     type Fields;
 
     fn into_value(self) -> Value;
+
+    /// Checks whether two byte values, `marker` and `signature`
+    /// correspond to the specific type implementing this trait.
+    /// It's useful when there's a need to determine the type of
+    /// the structure without serializing it.
+    fn check_header (marker: u8, signature: u8) -> bool {
+        signature == Self::SIG && marker == Self::LEN + crate::constants::marker::TINY_STRUCT
+    }
+}
+
+pub trait EmptyBoltStructure: BoltStructure {
+  /// Represents serialized value of the BoltStructure
+  /// that carries no data.
+  const MSG: [u8; 2];
 }
 
 /// Represents any possible [`Bolt Structure`].
 ///
 /// [`Bolt Structure`]: https://boltprotocol.org/v1/#structures
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum Structure {
     Node(Node),
     Path(Path),
@@ -68,23 +82,44 @@ pub enum Structure {
     Success(Success),
 }
 
+impl fmt::Debug for Structure {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      match self {
+          Self::Node(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Path(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Relationship(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::UnboundRelationship(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::AckFailure(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::DiscardAll(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Failure(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Ignored(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Init(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::PullAll(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Record(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Reset(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Run(v) => f.debug_tuple("Structure").field(v).finish(),
+          Self::Success(v) => f.debug_tuple("Structure").field(v).finish(),
+      }
+  }
+}
+
 impl fmt::Display for Structure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Node(v) => f.debug_tuple("Node").field(v).finish(),
-            Self::Path(v) => f.debug_tuple("Path").field(v).finish(),
-            Self::Relationship(v) => f.debug_tuple("Relationship").field(v).finish(),
-            Self::UnboundRelationship(v) => f.debug_tuple("UnboundRelationship").field(v).finish(),
-            Self::AckFailure(v) => f.debug_tuple("AckFailure").field(v).finish(),
-            Self::DiscardAll(v) => f.debug_tuple("DiscardAll").field(v).finish(),
-            Self::Failure(v) => f.debug_tuple("Failure").field(v).finish(),
-            Self::Ignored(v) => f.debug_tuple("Ignored").field(v).finish(),
-            Self::Init(v) => f.debug_tuple("Init").field(v).finish(),
-            Self::PullAll(v) => f.debug_tuple("PullAll").field(v).finish(),
-            Self::Record(v) => f.debug_tuple("Record").field(v).finish(),
-            Self::Reset(v) => f.debug_tuple("Reset").field(v).finish(),
-            Self::Run(v) => f.debug_tuple("Run").field(v).finish(),
-            Self::Success(v) => f.debug_tuple("Success").field(v).finish(),
+            Self::Node(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Path(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Relationship(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::UnboundRelationship(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::AckFailure(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::DiscardAll(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Failure(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Ignored(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Init(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::PullAll(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Record(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Reset(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Run(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Success(v) => f.debug_tuple("Structure").field(v).finish(),
         }
     }
 }

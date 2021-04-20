@@ -1,5 +1,5 @@
 use super::*;
-use serde_bolt::constants::marker::*;
+use packstream_serde::constants::marker::*;
 
 #[test]
 fn integer() {
@@ -168,7 +168,7 @@ fn r#enum() {
 
 #[test]
 fn structure() {
-    use serde_bolt::value::structure::{AckFailure, BoltStructure, Structure};
+    use packstream_serde::value::structure::{AckFailure, BoltStructure, Structure};
 
     de(
         &[TINY_STRUCT, AckFailure::SIG],

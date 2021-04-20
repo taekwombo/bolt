@@ -1,10 +1,10 @@
 use super::Value;
-use crate::error::{SerdeError, SerdeResult};
+use crate::error::{PackstreamError, PackstreamResult};
 use serde::ser::{self, Impossible};
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;
 
-pub fn to_value<T>(value: T) -> SerdeResult<Value>
+pub fn to_value<T>(value: T) -> PackstreamResult<Value>
 where
     T: ser::Serialize,
 {
@@ -39,7 +39,7 @@ pub struct Serializer;
 
 impl ser::Serializer for Serializer {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
     type SerializeSeq = SerializeSeq;
     type SerializeTuple = SerializeSeq;
@@ -49,74 +49,74 @@ impl ser::Serializer for Serializer {
     type SerializeStruct = SerializeMap;
     type SerializeStructVariant = SerializeStructVariant;
 
-    fn serialize_bool(self, value: bool) -> SerdeResult<Self::Ok> {
+    fn serialize_bool(self, value: bool) -> PackstreamResult<Self::Ok> {
         Ok(Value::Bool(value))
     }
 
-    fn serialize_i8(self, value: i8) -> SerdeResult<Self::Ok> {
+    fn serialize_i8(self, value: i8) -> PackstreamResult<Self::Ok> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_i16(self, value: i16) -> SerdeResult<Self::Ok> {
+    fn serialize_i16(self, value: i16) -> PackstreamResult<Self::Ok> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_i32(self, value: i32) -> SerdeResult<Self::Ok> {
+    fn serialize_i32(self, value: i32) -> PackstreamResult<Self::Ok> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_i64(self, value: i64) -> SerdeResult<Self::Ok> {
+    fn serialize_i64(self, value: i64) -> PackstreamResult<Self::Ok> {
         Ok(Value::I64(value))
     }
 
-    fn serialize_u8(self, value: u8) -> SerdeResult<Self::Ok> {
+    fn serialize_u8(self, value: u8) -> PackstreamResult<Self::Ok> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_u16(self, value: u16) -> SerdeResult<Self::Ok> {
+    fn serialize_u16(self, value: u16) -> PackstreamResult<Self::Ok> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_u32(self, value: u32) -> SerdeResult<Self::Ok> {
+    fn serialize_u32(self, value: u32) -> PackstreamResult<Self::Ok> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_u64(self, value: u64) -> SerdeResult<Self::Ok> {
+    fn serialize_u64(self, value: u64) -> PackstreamResult<Self::Ok> {
         use std::convert::TryFrom;
 
         let val_int = i64::try_from(value).map_err(|_| {
-            SerdeError::create(format!("Attempt to convert {}u64 into i63 failed", value))
+            PackstreamError::create(format!("Attempt to convert {}u64 into i63 failed", value))
         })?;
         self.serialize_i64(val_int)
     }
 
-    fn serialize_f32(self, value: f32) -> SerdeResult<Self::Ok> {
+    fn serialize_f32(self, value: f32) -> PackstreamResult<Self::Ok> {
         self.serialize_f64(value as f64)
     }
 
-    fn serialize_f64(self, value: f64) -> SerdeResult<Self::Ok> {
+    fn serialize_f64(self, value: f64) -> PackstreamResult<Self::Ok> {
         Ok(Value::F64(value))
     }
 
-    fn serialize_char(self, value: char) -> SerdeResult<Self::Ok> {
+    fn serialize_char(self, value: char) -> PackstreamResult<Self::Ok> {
         let mut s = String::new();
         s.push(value);
         Ok(Value::String(s))
     }
 
-    fn serialize_str(self, value: &str) -> SerdeResult<Self::Ok> {
+    fn serialize_str(self, value: &str) -> PackstreamResult<Self::Ok> {
         Ok(Value::String(value.to_owned()))
     }
 
-    fn serialize_bytes(self, value: &[u8]) -> SerdeResult<Self::Ok> {
+    fn serialize_bytes(self, value: &[u8]) -> PackstreamResult<Self::Ok> {
         Ok(Value::Bytes(ByteBuf::from(value)))
     }
 
-    fn serialize_unit(self) -> SerdeResult<Self::Ok> {
+    fn serialize_unit(self) -> PackstreamResult<Self::Ok> {
         Ok(Value::Null)
     }
 
-    fn serialize_unit_struct(self, _name: &'static str) -> SerdeResult<Self::Ok> {
+    fn serialize_unit_struct(self, _name: &'static str) -> PackstreamResult<Self::Ok> {
         self.serialize_unit()
     }
 
@@ -125,7 +125,7 @@ impl ser::Serializer for Serializer {
         _name: &'static str,
         _variant_index: u32,
         variant: &'static str,
-    ) -> SerdeResult<Self::Ok> {
+    ) -> PackstreamResult<Self::Ok> {
         self.serialize_str(variant)
     }
 
@@ -133,7 +133,7 @@ impl ser::Serializer for Serializer {
         self,
         _name: &'static str,
         value: &T,
-    ) -> SerdeResult<Self::Ok>
+    ) -> PackstreamResult<Self::Ok>
     where
         T: ser::Serialize,
     {
@@ -146,7 +146,7 @@ impl ser::Serializer for Serializer {
         _variant_index: u32,
         variant: &'static str,
         value: &T,
-    ) -> SerdeResult<Self::Ok>
+    ) -> PackstreamResult<Self::Ok>
     where
         T: ser::Serialize,
     {
@@ -155,22 +155,22 @@ impl ser::Serializer for Serializer {
         Ok(Value::Map(map))
     }
 
-    fn serialize_none(self) -> SerdeResult<Self::Ok> {
+    fn serialize_none(self) -> PackstreamResult<Self::Ok> {
         self.serialize_unit()
     }
 
-    fn serialize_some<T: ?Sized>(self, value: &T) -> SerdeResult<Self::Ok>
+    fn serialize_some<T: ?Sized>(self, value: &T) -> PackstreamResult<Self::Ok>
     where
         T: ser::Serialize,
     {
         value.serialize(self)
     }
 
-    fn serialize_seq(self, len: Option<usize>) -> SerdeResult<Self::SerializeSeq> {
+    fn serialize_seq(self, len: Option<usize>) -> PackstreamResult<Self::SerializeSeq> {
         Ok(SerializeSeq::new(len.unwrap_or(0)))
     }
 
-    fn serialize_tuple(self, len: usize) -> SerdeResult<Self::SerializeTuple> {
+    fn serialize_tuple(self, len: usize) -> PackstreamResult<Self::SerializeTuple> {
         self.serialize_seq(Some(len))
     }
 
@@ -178,7 +178,7 @@ impl ser::Serializer for Serializer {
         self,
         _name: &'static str,
         len: usize,
-    ) -> SerdeResult<Self::SerializeTupleStruct> {
+    ) -> PackstreamResult<Self::SerializeTupleStruct> {
         self.serialize_seq(Some(len))
     }
 
@@ -188,14 +188,14 @@ impl ser::Serializer for Serializer {
         _variant_index: u32,
         variant: &'static str,
         _len: usize,
-    ) -> SerdeResult<Self::SerializeTupleVariant> {
+    ) -> PackstreamResult<Self::SerializeTupleVariant> {
         Ok(SerializeTupleVariant {
             name: variant.to_owned(),
             vec: Vec::new(),
         })
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> SerdeResult<Self::SerializeMap> {
+    fn serialize_map(self, _len: Option<usize>) -> PackstreamResult<Self::SerializeMap> {
         Ok(SerializeMap {
             key: None,
             map: HashMap::new(),
@@ -206,7 +206,7 @@ impl ser::Serializer for Serializer {
         self,
         _name: &'static str,
         len: usize,
-    ) -> SerdeResult<Self::SerializeStruct> {
+    ) -> PackstreamResult<Self::SerializeStruct> {
         self.serialize_map(Some(len))
     }
 
@@ -216,7 +216,7 @@ impl ser::Serializer for Serializer {
         _variant_index: u32,
         variant: &'static str,
         _len: usize,
-    ) -> SerdeResult<Self::SerializeStructVariant> {
+    ) -> PackstreamResult<Self::SerializeStructVariant> {
         Ok(SerializeStructVariant {
             name: variant.to_owned(),
             map: HashMap::new(),
@@ -238,9 +238,9 @@ impl SerializeSeq {
 
 impl ser::SerializeSeq for SerializeSeq {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
@@ -248,39 +248,39 @@ impl ser::SerializeSeq for SerializeSeq {
         Ok(())
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         Ok(Value::List(self.vec))
     }
 }
 
 impl ser::SerializeTuple for SerializeSeq {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
         serde::ser::SerializeSeq::serialize_element(self, value)
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         serde::ser::SerializeSeq::end(self)
     }
 }
 
 impl ser::SerializeTupleStruct for SerializeSeq {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
         serde::ser::SerializeSeq::serialize_element(self, value)
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         serde::ser::SerializeSeq::end(self)
     }
 }
@@ -292,9 +292,9 @@ pub struct SerializeTupleVariant {
 
 impl ser::SerializeTupleVariant for SerializeTupleVariant {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
@@ -302,7 +302,7 @@ impl ser::SerializeTupleVariant for SerializeTupleVariant {
         Ok(())
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         let mut map = HashMap::new();
         map.insert(self.name, Value::List(self.vec));
         Ok(Value::Map(map))
@@ -316,9 +316,9 @@ pub struct SerializeMap {
 
 impl ser::SerializeMap for SerializeMap {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> SerdeResult<()>
+    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
@@ -326,7 +326,7 @@ impl ser::SerializeMap for SerializeMap {
         Ok(())
     }
 
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
@@ -335,16 +335,16 @@ impl ser::SerializeMap for SerializeMap {
         Ok(())
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         Ok(Value::Map(self.map))
     }
 }
 
 impl ser::SerializeStruct for SerializeMap {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
@@ -352,7 +352,7 @@ impl ser::SerializeStruct for SerializeMap {
         ser::SerializeMap::serialize_value(self, value)
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         ser::SerializeMap::end(self)
     }
 }
@@ -364,9 +364,9 @@ pub struct SerializeStructVariant {
 
 impl ser::SerializeStructVariant for SerializeStructVariant {
     type Ok = Value;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> PackstreamResult<()>
     where
         T: ser::Serialize,
     {
@@ -374,7 +374,7 @@ impl ser::SerializeStructVariant for SerializeStructVariant {
         Ok(())
     }
 
-    fn end(self) -> SerdeResult<Self::Ok> {
+    fn end(self) -> PackstreamResult<Self::Ok> {
         let mut map = HashMap::new();
         map.insert(self.name, Value::Map(self.map));
         Ok(Value::Map(map))
@@ -383,67 +383,67 @@ impl ser::SerializeStructVariant for SerializeStructVariant {
 
 struct MapKeySerializer;
 
-fn key_must_be_a_string() -> SerdeError {
-    SerdeError::create("key must be a string")
+fn key_must_be_a_string() -> PackstreamError {
+    PackstreamError::create("key must be a string")
 }
 
 impl ser::Serializer for MapKeySerializer {
     type Ok = String;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    type SerializeSeq = Impossible<String, SerdeError>;
-    type SerializeTuple = Impossible<String, SerdeError>;
-    type SerializeTupleStruct = Impossible<String, SerdeError>;
-    type SerializeTupleVariant = Impossible<String, SerdeError>;
-    type SerializeMap = Impossible<String, SerdeError>;
-    type SerializeStruct = Impossible<String, SerdeError>;
-    type SerializeStructVariant = Impossible<String, SerdeError>;
+    type SerializeSeq = Impossible<String, PackstreamError>;
+    type SerializeTuple = Impossible<String, PackstreamError>;
+    type SerializeTupleStruct = Impossible<String, PackstreamError>;
+    type SerializeTupleVariant = Impossible<String, PackstreamError>;
+    type SerializeMap = Impossible<String, PackstreamError>;
+    type SerializeStruct = Impossible<String, PackstreamError>;
+    type SerializeStructVariant = Impossible<String, PackstreamError>;
 
-    fn serialize_bool(self, _value: bool) -> SerdeResult<Self::Ok> {
+    fn serialize_bool(self, _value: bool) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_i8(self, value: i8) -> SerdeResult<Self::Ok> {
+    fn serialize_i8(self, value: i8) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_i16(self, value: i16) -> SerdeResult<Self::Ok> {
+    fn serialize_i16(self, value: i16) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_i32(self, value: i32) -> SerdeResult<Self::Ok> {
+    fn serialize_i32(self, value: i32) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_i64(self, value: i64) -> SerdeResult<Self::Ok> {
+    fn serialize_i64(self, value: i64) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_u8(self, value: u8) -> SerdeResult<Self::Ok> {
+    fn serialize_u8(self, value: u8) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_u16(self, value: u16) -> SerdeResult<Self::Ok> {
+    fn serialize_u16(self, value: u16) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_u32(self, value: u32) -> SerdeResult<Self::Ok> {
+    fn serialize_u32(self, value: u32) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_u64(self, value: u64) -> SerdeResult<Self::Ok> {
+    fn serialize_u64(self, value: u64) -> PackstreamResult<Self::Ok> {
         Ok(value.to_string())
     }
 
-    fn serialize_f32(self, _value: f32) -> SerdeResult<Self::Ok> {
+    fn serialize_f32(self, _value: f32) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_f64(self, _value: f64) -> SerdeResult<Self::Ok> {
+    fn serialize_f64(self, _value: f64) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_char(self, value: char) -> SerdeResult<Self::Ok> {
+    fn serialize_char(self, value: char) -> PackstreamResult<Self::Ok> {
         Ok({
             let mut s = String::new();
             s.push(value);
@@ -451,19 +451,19 @@ impl ser::Serializer for MapKeySerializer {
         })
     }
 
-    fn serialize_str(self, value: &str) -> SerdeResult<Self::Ok> {
+    fn serialize_str(self, value: &str) -> PackstreamResult<Self::Ok> {
         Ok(value.to_owned())
     }
 
-    fn serialize_bytes(self, _value: &[u8]) -> SerdeResult<Self::Ok> {
+    fn serialize_bytes(self, _value: &[u8]) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_unit(self) -> SerdeResult<Self::Ok> {
+    fn serialize_unit(self) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_unit_struct(self, _name: &'static str) -> SerdeResult<Self::Ok> {
+    fn serialize_unit_struct(self, _name: &'static str) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
@@ -472,7 +472,7 @@ impl ser::Serializer for MapKeySerializer {
         _name: &'static str,
         _variant_index: u32,
         variant: &'static str,
-    ) -> SerdeResult<Self::Ok> {
+    ) -> PackstreamResult<Self::Ok> {
         Ok(variant.to_owned())
     }
 
@@ -480,7 +480,7 @@ impl ser::Serializer for MapKeySerializer {
         self,
         _name: &'static str,
         value: &T,
-    ) -> SerdeResult<Self::Ok>
+    ) -> PackstreamResult<Self::Ok>
     where
         T: ser::Serialize,
     {
@@ -493,29 +493,29 @@ impl ser::Serializer for MapKeySerializer {
         _variant_index: u32,
         _variant: &'static str,
         _value: &T,
-    ) -> SerdeResult<Self::Ok>
+    ) -> PackstreamResult<Self::Ok>
     where
         T: ser::Serialize,
     {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_none(self) -> SerdeResult<Self::Ok> {
+    fn serialize_none(self) -> PackstreamResult<Self::Ok> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> SerdeResult<Self::Ok>
+    fn serialize_some<T: ?Sized>(self, _value: &T) -> PackstreamResult<Self::Ok>
     where
         T: ser::Serialize,
     {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_seq(self, _len: Option<usize>) -> SerdeResult<Self::SerializeSeq> {
+    fn serialize_seq(self, _len: Option<usize>) -> PackstreamResult<Self::SerializeSeq> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_tuple(self, _len: usize) -> SerdeResult<Self::SerializeTuple> {
+    fn serialize_tuple(self, _len: usize) -> PackstreamResult<Self::SerializeTuple> {
         Err(key_must_be_a_string())
     }
 
@@ -523,7 +523,7 @@ impl ser::Serializer for MapKeySerializer {
         self,
         _name: &'static str,
         _len: usize,
-    ) -> SerdeResult<Self::SerializeTupleStruct> {
+    ) -> PackstreamResult<Self::SerializeTupleStruct> {
         Err(key_must_be_a_string())
     }
 
@@ -533,11 +533,11 @@ impl ser::Serializer for MapKeySerializer {
         _variant_index: u32,
         _variant: &'static str,
         _len: usize,
-    ) -> SerdeResult<Self::SerializeTupleVariant> {
+    ) -> PackstreamResult<Self::SerializeTupleVariant> {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> SerdeResult<Self::SerializeMap> {
+    fn serialize_map(self, _len: Option<usize>) -> PackstreamResult<Self::SerializeMap> {
         Err(key_must_be_a_string())
     }
 
@@ -545,7 +545,7 @@ impl ser::Serializer for MapKeySerializer {
         self,
         _name: &'static str,
         _len: usize,
-    ) -> SerdeResult<Self::SerializeStruct> {
+    ) -> PackstreamResult<Self::SerializeStruct> {
         Err(key_must_be_a_string())
     }
 
@@ -555,7 +555,7 @@ impl ser::Serializer for MapKeySerializer {
         _variant_index: u32,
         _variant: &'static str,
         _len: usize,
-    ) -> SerdeResult<Self::SerializeStructVariant> {
+    ) -> PackstreamResult<Self::SerializeStructVariant> {
         Err(key_must_be_a_string())
     }
 }

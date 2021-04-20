@@ -1,5 +1,5 @@
 use super::*;
-use serde_bolt::from_value;
+use packstream_serde::from_value;
 
 fn de<T>(value: Value, expected: T)
 where

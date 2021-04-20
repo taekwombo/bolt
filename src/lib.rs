@@ -1,12 +1,11 @@
-//! # Bolt Protocol Serialization
+//! # Packstream Serde Implementation
+//! Specification available on the [7687.org] website.
 //!
-//!
-//! The Bolt network protocol is a highly efficient, lightweight client-server protocol designed for database applications ([website]).
-//!
-//! # Parsing bytes as strongly typed values.
+//! # Examples
+//! Parsing bytes as strongly typed values.
 //!
 //! ```
-//! # use serde_bolt::{from_bytes, error::SerdeResult};
+//! # use packstream_serde::{from_bytes, error::PackstreamResult};
 //! # use serde_derive::Deserialize;
 //! #[derive(Deserialize)]
 //! struct BasicAuth<'a> {
@@ -17,10 +16,10 @@
 //! # const BYTES: &[u8] = &[162, 136, 117, 115, 101, 114, 110, 97, 109, 101, 132, 74, 111, 104, 110, 136, 112, 97, 115, 115, 119, 111, 114, 100, 131, 68, 111, 101];
 //! #
 //!
-//! fn typed_example (bytes: &[u8]) -> SerdeResult<()> {
+//! fn typed_example (bytes: &[u8]) -> PackstreamResult<()> {
 //!     let auth: BasicAuth = from_bytes(bytes)?;
-//!     println!("Hello {}, leaking your password {} :(", auth.username, auth.password);
-//!     return Ok(());
+//!     println!("Hello {}, leaking your password {}", auth.username, auth.password);
+//!     Ok(())
 //! }
 //! #
 //! # fn main() {
@@ -29,21 +28,20 @@
 //! #
 //! ```
 //!
-//! # Parsing bytes as loosely-typed value.
+//! Parsing bytes as loosely-typed value.
 //!
 //! ```
-//! # use serde_bolt::error::SerdeResult;
-//! # use serde_bolt::{from_bytes, Value};
+//! # use packstream_serde::error::PackstreamResult;
+//! # use packstream_serde::{from_bytes, Value};
 //! #
-//! # const BYTES: &[u8] = &[162, 136, 117, 115, 101, 114, 110, 97, 109, 101, 132, 74, 111, 104, 110, 136, 112, 97, 115, 115, 119, 111, 114, 100, 131, 68, 111, 101];
-//! #
-//! fn untyped_example(bytes: &[u8]) -> SerdeResult<()> {
+//! const BYTES: &[u8] = &[0xC0];
+//! 
+//! fn untyped_example(bytes: &[u8]) -> PackstreamResult<()> {
 //!     match from_bytes(bytes)? {
-//!         Value::Map(map) => {
-//!             println!("{:?}", map);
+//!         Value::Null => {
 //!             Ok(())
 //!         }
-//!         _ => panic!("This should be a map, trust me."),
+//!         _ => panic!("Expected a Null value."),
 //!     }
 //! }
 //!
@@ -53,7 +51,7 @@
 //! # }
 //! #
 //! ```
-//! [website]: https://boltprotocol.org/.
+//! [7687.org]: https://7687.org/.
 //! [`Value`]: value::Value
 
 #[macro_use]
@@ -72,4 +70,4 @@ pub use de::from_bytes;
 #[doc(inline)]
 pub use ser::to_bytes;
 #[doc(inline)]
-pub use value::{from_value, to_value, Structure, Value};
+pub use value::{from_value, to_value, Structure, Value, structure};

@@ -1,7 +1,8 @@
-use super::{BoltStructure, Empty, Value};
+use super::{EmptyBoltStructure, BoltStructure, Empty, Value};
 use crate::{
     constants::STRUCTURE_NAME,
-    error::{SerdeError, SerdeResult},
+    constants::marker,
+    error::{PackstreamError, PackstreamResult},
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -22,6 +23,10 @@ impl BoltStructure for PullAll {
     fn into_value(self) -> Value {
         value_map! {}
     }
+}
+
+impl EmptyBoltStructure for PullAll {
+    const MSG: [u8; 2] = [marker::TINY_STRUCT, Self::SIG];
 }
 
 impl fmt::Display for PullAll {
@@ -69,9 +74,9 @@ impl<'de> de::Visitor<'de> for PullAllVisitor {
 }
 
 impl<'de> de::Deserializer<'de> for PullAll {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {

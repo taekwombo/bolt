@@ -1,5 +1,5 @@
 use super::constants::marker::*;
-use super::error::{ErrorCode, SerdeError, SerdeResult};
+use super::error::{ErrorCode, PackstreamError, PackstreamResult};
 use super::marker::Marker;
 
 macro_rules! bytes_to_usize {
@@ -22,20 +22,20 @@ pub trait Unpacker<'a> {
     fn is_done(&self) -> bool;
 
     /// Sets virtual marker and/or value needed for Structure deserialization
-    fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> SerdeResult<()>;
+    fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> PackstreamResult<()>;
 
     /// Scratches peeked bytes and consumes next N bytes
     /// If virtual value was set then the virtual value is returned instead
-    fn consume_bytes(&mut self, len: usize) -> SerdeResult<&'a [u8]>;
+    fn consume_bytes(&mut self, len: usize) -> PackstreamResult<&'a [u8]>;
 
     /// Returns Nth byte from current index if it exists
-    fn peek_byte_nth_ahead(&self, pos_ahead: usize) -> SerdeResult<u8>;
+    fn peek_byte_nth_ahead(&self, pos_ahead: usize) -> PackstreamResult<u8>;
 
     /// Peek and consume marker
-    fn consume_marker(&mut self) -> SerdeResult<Marker>;
+    fn consume_marker(&mut self) -> PackstreamResult<Marker>;
 
     // Peek marker
-    fn peek_marker(&mut self) -> SerdeResult<Marker>;
+    fn peek_marker(&mut self) -> PackstreamResult<Marker>;
 
     fn scratch_peeked(&mut self);
 }
@@ -55,10 +55,10 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         self.bytes.len() == self.index
     }
 
-    fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> SerdeResult<()> {
+    fn set_virtual(&mut self, marker: Marker, value: Option<&'static [u8]>) -> PackstreamResult<()> {
         // Ensure that call to .set_virtual never overwrites existing virtual values
         if self.virtual_marker.is_some() || self.virtual_value.is_some() {
-            return Err(SerdeError::create(ErrorCode::VirtualIllegalAssignment));
+            return Err(PackstreamError::create(ErrorCode::VirtualIllegalAssignment));
         }
 
         self.virtual_marker = Some(marker);
@@ -68,14 +68,14 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
     }
 
     /// Called only when additional data needs to be consumed after consuming marker.
-    fn consume_bytes(&mut self, len: usize) -> SerdeResult<&'a [u8]> {
+    fn consume_bytes(&mut self, len: usize) -> PackstreamResult<&'a [u8]> {
         if self.virtual_value.is_some() {
             assert!(self.virtual_marker.is_none());
             return Ok(self.virtual_value.take().expect("Virtual Value to exist"));
         }
 
         if self.index + len > self.bytes.len() {
-            return Err(SerdeError::create(ErrorCode::UnexpectedEndOfBytes));
+            return Err(PackstreamError::create(ErrorCode::UnexpectedEndOfBytes));
         }
 
         let bytes = &self.bytes[self.index..self.index + len];
@@ -84,20 +84,20 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
         Ok(bytes)
     }
 
-    fn peek_byte_nth_ahead(&self, ahead: usize) -> SerdeResult<u8> {
+    fn peek_byte_nth_ahead(&self, ahead: usize) -> PackstreamResult<u8> {
         self.bytes
             .get(self.index + ahead)
             .copied()
-            .ok_or_else(|| SerdeError::create(ErrorCode::UnexpectedEndOfBytes))
+            .ok_or_else(|| PackstreamError::create(ErrorCode::UnexpectedEndOfBytes))
     }
 
-    fn consume_marker(&mut self) -> SerdeResult<Marker> {
+    fn consume_marker(&mut self) -> PackstreamResult<Marker> {
         let marker = self.peek_marker()?;
         self.scratch_peeked();
         Ok(marker)
     }
 
-    fn peek_marker(&mut self) -> SerdeResult<Marker> {
+    fn peek_marker(&mut self) -> PackstreamResult<Marker> {
         if self.virtual_marker.is_some() {
             assert!(
                 self.peeked == 0,
@@ -272,10 +272,6 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
                 let n = f64::from_bits(u64::from_be_bytes([b1, b2, b3, b4, b5, b6, b7, b8]));
                 Marker::F64(n)
             }
-            END_OF_STREAM => {
-                self.peeked = 1;
-                Marker::EOS
-            }
             BYTES_8 => {
                 let len = self.peek_byte_nth_ahead(1)? as usize;
                 self.peeked = 2;
@@ -304,7 +300,7 @@ impl<'a> Unpacker<'a> for ByteReader<'a> {
             }
 
             b => {
-                return Err(SerdeError::create(format!(
+                return Err(PackstreamError::create(format!(
                     "Peek error: byte {:x} is not a marker",
                     b
                 )))
@@ -384,7 +380,6 @@ mod tests {
             [NULL] => Marker::Null,
             [TRUE] => Marker::True,
             [FALSE] => Marker::False,
-            [END_OF_STREAM] => Marker::EOS,
             [INT_8, 10] => Marker::I64(10),
             [INT_8, 255] => Marker::I64(-1),
             [INT_16, 1, 0] => Marker::I64(256),

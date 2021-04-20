@@ -13,7 +13,7 @@ pub use structure::Structure;
 /// Represents any valid [Bolt value].
 ///
 /// [Bolt value]: https://boltprotocol.org/v1/#overview_2
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum Value {
     Null,
     Bool(bool),
@@ -24,6 +24,22 @@ pub enum Value {
     Map(HashMap<String, Value>),
     Bytes(ByteBuf),
     Structure(Structure),
+}
+
+impl fmt::Debug for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Null => f.debug_tuple("Null").finish(),
+            Self::Bool(v) => f.debug_tuple("Bool").field(v).finish(),
+            Self::I64(v) => f.debug_tuple("I64").field(v).finish(),
+            Self::F64(v) => f.debug_tuple("F64").field(v).finish(),
+            Self::String(v) => f.debug_tuple("String").field(v).finish(),
+            Self::List(v) => f.debug_tuple("List").field(v).finish(),
+            Self::Map(v) => f.debug_tuple("Map").field(v).finish(),
+            Self::Bytes(v) => f.debug_tuple("Bytes").field(v).finish(),
+            Self::Structure(v) => f.debug_tuple("Structure").field(v).finish(),
+        }
+    }
 }
 
 impl fmt::Display for Value {

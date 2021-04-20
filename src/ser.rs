@@ -1,5 +1,5 @@
 use super::constants::STRUCTURE_NAME;
-use super::error::{SerdeError, SerdeResult};
+use super::error::{PackstreamError, PackstreamResult};
 use super::marker::Marker;
 use serde::{ser, Serialize};
 
@@ -8,7 +8,7 @@ pub struct Serializer {
     output: Vec<u8>,
 }
 
-pub fn to_bytes<T: Serialize>(value: &T) -> SerdeResult<Vec<u8>> {
+pub fn to_bytes<T: Serialize>(value: &T) -> PackstreamResult<Vec<u8>> {
     let mut serializer = Serializer { output: Vec::new() };
     value.serialize(&mut serializer)?;
     Ok(serializer.output)
@@ -16,7 +16,7 @@ pub fn to_bytes<T: Serialize>(value: &T) -> SerdeResult<Vec<u8>> {
 
 impl<'a> ser::Serializer for &'a mut Serializer {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
     type SerializeSeq = Compound<'a>;
     type SerializeTuple = Compound<'a>;
@@ -26,104 +26,99 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     type SerializeStruct = Compound<'a>;
     type SerializeStructVariant = Compound<'a>;
 
-    fn serialize_bool(self, value: bool) -> SerdeResult<Self::Ok> {
+    fn serialize_bool(self, value: bool) -> PackstreamResult<Self::Ok> {
         let marker = if value { Marker::True } else { Marker::False };
-        self.output.append(&mut marker.to_vec()?);
+        marker.append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_i8(self, value: i8) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::I64(i64::from(value)).to_vec()?);
+    fn serialize_i8(self, value: i8) -> PackstreamResult<Self::Ok> {
+        Marker::I64(i64::from(value)).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_i16(self, value: i16) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::I64(i64::from(value)).to_vec()?);
+    fn serialize_i16(self, value: i16) -> PackstreamResult<Self::Ok> {
+        Marker::I64(i64::from(value)).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_i32(self, value: i32) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::I64(i64::from(value)).to_vec()?);
+    fn serialize_i32(self, value: i32) -> PackstreamResult<Self::Ok> {
+        Marker::I64(i64::from(value)).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_i64(self, value: i64) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::I64(value).to_vec()?);
+    fn serialize_i64(self, value: i64) -> PackstreamResult<Self::Ok> {
+        Marker::I64(i64::from(value)).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_u8(self, value: u8) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::I64(value as i64).to_vec()?);
+    fn serialize_u8(self, value: u8) -> PackstreamResult<Self::Ok> {
+        Marker::I64(value as i64).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_u16(self, value: u16) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::I64(value as i64).to_vec()?);
+    fn serialize_u16(self, value: u16) -> PackstreamResult<Self::Ok> {
+        Marker::I64(value as i64).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_u32(self, value: u32) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::I64(value as i64).to_vec()?);
+    fn serialize_u32(self, value: u32) -> PackstreamResult<Self::Ok> {
+        Marker::I64(value as i64).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_u64(self, value: u64) -> SerdeResult<Self::Ok> {
+    fn serialize_u64(self, value: u64) -> PackstreamResult<Self::Ok> {
         use std::convert::TryFrom;
 
         let val_int = i64::try_from(value).map_err(|_| {
-            SerdeError::create(format!("Attempt to convert {}u64 into i64 failed", value))
+            PackstreamError::create(format!("Attempt to convert {}u64 into i64 failed", value))
         })?;
-        self.output.append(&mut Marker::I64(val_int).to_vec()?);
+        Marker::I64(val_int).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_f32(self, value: f32) -> SerdeResult<Self::Ok> {
+    fn serialize_f32(self, value: f32) -> PackstreamResult<Self::Ok> {
         self.serialize_f64(f64::from(value))
     }
 
-    fn serialize_f64(self, value: f64) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::F64(value).to_vec()?);
+    fn serialize_f64(self, value: f64) -> PackstreamResult<Self::Ok> {
+        Marker::F64(value).append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_char(self, value: char) -> SerdeResult<Self::Ok> {
+    fn serialize_char(self, value: char) -> PackstreamResult<Self::Ok> {
         self.serialize_str(&value.to_string())
     }
 
-    fn serialize_str(self, value: &str) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::String(value.len()).to_vec()?);
+    fn serialize_str(self, value: &str) -> PackstreamResult<Self::Ok> {
+        Marker::String(value.len()).append_to_vec(&mut self.output)?;
         self.output.extend_from_slice(&value.as_bytes());
         Ok(())
     }
 
-    fn serialize_bytes(self, value: &[u8]) -> SerdeResult<Self::Ok> {
-        self.output
-            .append(&mut Marker::Bytes(value.len()).to_vec()?);
+    fn serialize_bytes(self, value: &[u8]) -> PackstreamResult<Self::Ok> {
+        Marker::String(value.len()).append_to_vec(&mut self.output)?;
         self.output.extend_from_slice(value);
         Ok(())
     }
 
-    fn serialize_none(self) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::Null.to_vec()?);
+    fn serialize_none(self) -> PackstreamResult<Self::Ok> {
+        Marker::Null.append_to_vec(&mut self.output)?;
         Ok(())
     }
 
-    fn serialize_some<T>(self, value: &T) -> SerdeResult<Self::Ok>
+    fn serialize_some<T>(self, value: &T) -> PackstreamResult<Self::Ok>
     where
         T: ?Sized + Serialize,
     {
         value.serialize(self)
     }
 
-    fn serialize_unit(self) -> SerdeResult<Self::Ok> {
+    fn serialize_unit(self) -> PackstreamResult<Self::Ok> {
         self.serialize_none()
     }
 
-    fn serialize_unit_struct(self, _name: &'static str) -> SerdeResult<Self::Ok> {
+    fn serialize_unit_struct(self, _name: &'static str) -> PackstreamResult<Self::Ok> {
         self.serialize_unit()
     }
 
@@ -132,15 +127,15 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         _name: &'static str,
         _variant_index: u32,
         variant: &'static str,
-    ) -> SerdeResult<Self::Ok> {
-        self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output
-            .append(&mut Marker::String(variant.len()).to_vec()?);
+    ) -> PackstreamResult<Self::Ok> {
+        Marker::Map(1).append_to_vec(&mut self.output)?;
+        Marker::String(variant.len()).append_to_vec(&mut self.output)?;
+
         self.output.extend_from_slice(&variant.as_bytes());
         self.serialize_unit()
     }
 
-    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> SerdeResult<Self::Ok>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> PackstreamResult<Self::Ok>
     where
         T: ?Sized + Serialize,
     {
@@ -153,28 +148,28 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         _variant_index: u32,
         variant: &'static str,
         value: &T,
-    ) -> SerdeResult<Self::Ok>
+    ) -> PackstreamResult<Self::Ok>
     where
         T: ?Sized + Serialize,
     {
-        self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output
-            .append(&mut Marker::String(variant.len()).to_vec()?);
+        Marker::Map(1).append_to_vec(&mut self.output)?;
+        Marker::String(variant.len()).append_to_vec(&mut self.output)?;
+
         self.output.extend_from_slice(&variant.as_bytes());
         value.serialize(self)
     }
 
-    fn serialize_seq(self, len: Option<usize>) -> SerdeResult<Self::SerializeSeq> {
+    fn serialize_seq(self, len: Option<usize>) -> PackstreamResult<Self::SerializeSeq> {
         if let Some(len) = len {
-            self.output.append(&mut Marker::List(len).to_vec()?);
+            Marker::List(len).append_to_vec(&mut self.output)?;
             Ok(Compound::new_static(self))
         } else {
             Ok(Compound::new_dyn(self, Marker::List(0)))
         }
     }
 
-    fn serialize_tuple(self, len: usize) -> SerdeResult<Self::SerializeTuple> {
-        self.output.append(&mut Marker::List(len).to_vec()?);
+    fn serialize_tuple(self, len: usize) -> PackstreamResult<Self::SerializeTuple> {
+        Marker::List(len).append_to_vec(&mut self.output)?;
         Ok(Compound::new_static(self))
     }
 
@@ -182,15 +177,14 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         self,
         name: &'static str,
         len: usize,
-    ) -> SerdeResult<Self::SerializeTupleStruct> {
+    ) -> PackstreamResult<Self::SerializeTupleStruct> {
         if name == STRUCTURE_NAME {
             let signature = len >> 56;
             let structure_length = len << 8 >> 8;
-            self.output
-                .append(&mut Marker::Struct(structure_length).to_vec()?);
+            Marker::Struct(structure_length).append_to_vec(&mut self.output)?;
             self.output.extend_from_slice(&[signature as u8]);
         } else {
-            self.output.append(&mut Marker::List(len).to_vec()?);
+            Marker::List(len).append_to_vec(&mut self.output)?;
         }
         Ok(Compound::new_static(self))
     }
@@ -201,18 +195,17 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         _variant_index: u32,
         variant: &'static str,
         len: usize,
-    ) -> SerdeResult<Self::SerializeTupleVariant> {
-        self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output
-            .append(&mut Marker::String(variant.len()).to_vec()?);
+    ) -> PackstreamResult<Self::SerializeTupleVariant> {
+        Marker::Map(1).append_to_vec(&mut self.output)?;
+        Marker::String(variant.len()).append_to_vec(&mut self.output)?;
         self.output.extend_from_slice(&variant.as_bytes());
-        self.output.append(&mut Marker::List(len).to_vec()?);
+        Marker::List(len).append_to_vec(&mut self.output)?;
         Ok(Compound::new_static(self))
     }
 
-    fn serialize_map(self, len: Option<usize>) -> SerdeResult<Self::SerializeMap> {
+    fn serialize_map(self, len: Option<usize>) -> PackstreamResult<Self::SerializeMap> {
         if let Some(len) = len {
-            self.output.append(&mut Marker::Map(len).to_vec()?);
+            Marker::Map(len).append_to_vec(&mut self.output)?;
             Ok(Compound::new_static(self))
         } else {
             Ok(Compound::new_dyn(self, Marker::Map(0)))
@@ -223,8 +216,8 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         self,
         _name: &'static str,
         len: usize,
-    ) -> SerdeResult<Self::SerializeStruct> {
-        self.output.append(&mut Marker::Map(len).to_vec()?);
+    ) -> PackstreamResult<Self::SerializeStruct> {
+        Marker::Map(len).append_to_vec(&mut self.output)?;
         Ok(Compound::new_static(self))
     }
 
@@ -234,12 +227,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         _variant_index: u32,
         variant: &'static str,
         len: usize,
-    ) -> SerdeResult<Self::SerializeStructVariant> {
-        self.output.append(&mut Marker::Map(1).to_vec()?);
-        self.output
-            .append(&mut Marker::String(variant.len()).to_vec()?);
+    ) -> PackstreamResult<Self::SerializeStructVariant> {
+        Marker::Map(1).append_to_vec(&mut self.output)?;
+        Marker::String(variant.len()).append_to_vec(&mut self.output)?;
         self.output.extend_from_slice(&variant.as_bytes());
-        self.output.append(&mut Marker::Map(len).to_vec()?);
+        Marker::Map(len).append_to_vec(&mut self.output)?;
         Ok(Compound::new_static(self))
     }
 }
@@ -266,8 +258,8 @@ impl<'a> Compound<'a> {
     }
 
     fn end_state(&mut self) {
-        if let Compound::DynSized { ser, buf, marker } = self {
-            buf.append(&mut marker.to_vec().unwrap());
+        if let Compound::DynSized { ser, ref mut buf, marker } = self {
+            marker.append_to_vec(buf).unwrap();
             buf.append(&mut ser.output);
             std::mem::swap(buf, &mut ser.output);
         }
@@ -276,9 +268,9 @@ impl<'a> Compound<'a> {
 
 impl<'a> ser::SerializeSeq for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_element<T>(&mut self, value: &T) -> SerdeResult<Self::Ok>
+    fn serialize_element<T>(&mut self, value: &T) -> PackstreamResult<Self::Ok>
     where
         T: ?Sized + Serialize,
     {
@@ -292,7 +284,7 @@ impl<'a> ser::SerializeSeq for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<Self::Ok> {
+    fn end(mut self) -> PackstreamResult<Self::Ok> {
         self.end_state();
         Ok(())
     }
@@ -300,9 +292,9 @@ impl<'a> ser::SerializeSeq for Compound<'a> {
 
 impl<'a> ser::SerializeTuple for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_element<T>(&mut self, value: &T) -> SerdeResult<Self::Ok>
+    fn serialize_element<T>(&mut self, value: &T) -> PackstreamResult<Self::Ok>
     where
         T: ?Sized + Serialize,
     {
@@ -316,7 +308,7 @@ impl<'a> ser::SerializeTuple for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<Self::Ok> {
+    fn end(mut self) -> PackstreamResult<Self::Ok> {
         self.end_state();
         Ok(())
     }
@@ -324,9 +316,9 @@ impl<'a> ser::SerializeTuple for Compound<'a> {
 
 impl<'a> ser::SerializeTupleStruct for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_field<T>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -340,7 +332,7 @@ impl<'a> ser::SerializeTupleStruct for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<Self::Ok> {
+    fn end(mut self) -> PackstreamResult<Self::Ok> {
         self.end_state();
         Ok(())
     }
@@ -348,9 +340,9 @@ impl<'a> ser::SerializeTupleStruct for Compound<'a> {
 
 impl<'a> ser::SerializeTupleVariant for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_field<T>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -364,7 +356,7 @@ impl<'a> ser::SerializeTupleVariant for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<Self::Ok> {
+    fn end(mut self) -> PackstreamResult<Self::Ok> {
         self.end_state();
         Ok(())
     }
@@ -372,9 +364,9 @@ impl<'a> ser::SerializeTupleVariant for Compound<'a> {
 
 impl<'a> ser::SerializeMap for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_key<T>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_key<T>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -388,7 +380,7 @@ impl<'a> ser::SerializeMap for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn serialize_value<T>(&mut self, value: &T) -> SerdeResult<()>
+    fn serialize_value<T>(&mut self, value: &T) -> PackstreamResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -402,7 +394,7 @@ impl<'a> ser::SerializeMap for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<Self::Ok> {
+    fn end(mut self) -> PackstreamResult<Self::Ok> {
         self.end_state();
         Ok(())
     }
@@ -410,9 +402,9 @@ impl<'a> ser::SerializeMap for Compound<'a> {
 
 impl<'a> ser::SerializeStruct for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> PackstreamResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -428,7 +420,7 @@ impl<'a> ser::SerializeStruct for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<Self::Ok> {
+    fn end(mut self) -> PackstreamResult<Self::Ok> {
         self.end_state();
         Ok(())
     }
@@ -436,9 +428,9 @@ impl<'a> ser::SerializeStruct for Compound<'a> {
 
 impl<'a> ser::SerializeStructVariant for Compound<'a> {
     type Ok = ();
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> SerdeResult<()>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> PackstreamResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -454,7 +446,7 @@ impl<'a> ser::SerializeStructVariant for Compound<'a> {
         value.serialize(&mut **ser)
     }
 
-    fn end(mut self) -> SerdeResult<()> {
+    fn end(mut self) -> PackstreamResult<()> {
         self.end_state();
         Ok(())
     }

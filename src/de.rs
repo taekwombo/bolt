@@ -1,10 +1,10 @@
 use super::constants::{STRUCTURE_FIELDS_KEY_B, STRUCTURE_SIG_KEY_B};
-use super::error::{ErrorCode, SerdeError, SerdeResult};
+use super::error::{ErrorCode, PackstreamError, PackstreamResult};
 use super::marker::Marker;
 use super::read::{ByteReader, Unpacker};
 use serde::de;
 
-pub fn from_bytes<'de, T>(bytes: &'de [u8]) -> SerdeResult<T>
+pub fn from_bytes<'de, T>(bytes: &'de [u8]) -> PackstreamResult<T>
 where
     T: de::Deserialize<'de>,
 {
@@ -15,14 +15,14 @@ where
 }
 
 mod errors {
-    use super::{Marker, SerdeError};
+    use super::{Marker, PackstreamError};
 
-    pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> SerdeError {
-        SerdeError::create(format!("Expected {}, got {} instead", expected, actual))
+    pub(super) fn unexpected_marker(expected: &str, actual: &Marker) -> PackstreamError {
+        PackstreamError::create(format!("Expected {}, got {} instead", expected, actual))
     }
 
-    pub(super) fn invalid_length(kind: &str, expected: usize, actual: usize) -> SerdeError {
-        SerdeError::create(format!(
+    pub(super) fn invalid_length(kind: &str, expected: usize, actual: usize) -> PackstreamError {
+        PackstreamError::create(format!(
             "Expected {} length to be equal to {}, got {} instead",
             kind, expected, actual
         ))
@@ -44,15 +44,15 @@ where
         }
     }
 
-    fn is_done(&self) -> SerdeResult<()> {
+    fn is_done(&self) -> PackstreamResult<()> {
         if self.read.is_done() {
             Ok(())
         } else {
-            Err(SerdeError::create(ErrorCode::UnexpectedTrailingBytes))
+            Err(PackstreamError::create(ErrorCode::UnexpectedTrailingBytes))
         }
     }
 
-    fn parse_bool(&mut self) -> SerdeResult<bool> {
+    fn parse_bool(&mut self) -> PackstreamResult<bool> {
         match self.read.consume_marker()? {
             Marker::True => Ok(true),
             Marker::False => Ok(false),
@@ -60,39 +60,39 @@ where
         }
     }
 
-    fn parse_int<T>(&mut self) -> SerdeResult<T>
+    fn parse_int<T>(&mut self) -> PackstreamResult<T>
     where
         T: std::convert::TryFrom<i64>,
         <T as std::convert::TryFrom<i64>>::Error: std::error::Error + 'static,
     {
         match self.read.consume_marker()? {
-            Marker::I64(num) => T::try_from(num).map_err(|e| SerdeError::create(e.to_string())),
+            Marker::I64(num) => T::try_from(num).map_err(|e| PackstreamError::create(e.to_string())),
             m => Err(errors::unexpected_marker("Marker::I64", &m)),
         }
     }
 
-    fn parse_f64(&mut self) -> SerdeResult<f64> {
+    fn parse_f64(&mut self) -> PackstreamResult<f64> {
         match self.read.consume_marker()? {
             Marker::F64(num) => Ok(num),
             m => Err(errors::unexpected_marker("Marker::F64", &m)),
         }
     }
 
-    fn parse_char(&mut self) -> SerdeResult<char> {
+    fn parse_char(&mut self) -> PackstreamResult<char> {
         match self.read.consume_marker()? {
             Marker::String(len) if len == 1 => Ok(self.read.consume_bytes(1)?[0] as char),
             m => Err(errors::unexpected_marker("Marker::String(1)", &m)),
         }
     }
 
-    fn parse_str(&mut self) -> SerdeResult<&'de str> {
+    fn parse_str(&mut self) -> PackstreamResult<&'de str> {
         match self.read.consume_marker()? {
             Marker::String(len) => Ok(std::str::from_utf8(self.read.consume_bytes(len)?)?),
             m => Err(errors::unexpected_marker("Marker::String", &m)),
         }
     }
 
-    fn parse_string(&mut self) -> SerdeResult<String> {
+    fn parse_string(&mut self) -> PackstreamResult<String> {
         match self.read.consume_marker()? {
             Marker::String(len) => {
                 let bytes = self.read.consume_bytes(len)?.to_vec();
@@ -102,35 +102,35 @@ where
         }
     }
 
-    fn parse_bytes(&mut self) -> SerdeResult<&'de [u8]> {
+    fn parse_bytes(&mut self) -> PackstreamResult<&'de [u8]> {
         match self.read.consume_marker()? {
             Marker::Bytes(len) => Ok(self.read.consume_bytes(len)?),
             m => Err(errors::unexpected_marker("Marker::Bytes", &m)),
         }
     }
 
-    fn parse_null(&mut self) -> SerdeResult<()> {
+    fn parse_null(&mut self) -> PackstreamResult<()> {
         match self.read.consume_marker()? {
             Marker::Null => Ok(()),
             m => Err(errors::unexpected_marker("Marker::Null", &m)),
         }
     }
 
-    fn parse_list(&mut self) -> SerdeResult<usize> {
+    fn parse_list(&mut self) -> PackstreamResult<usize> {
         match self.read.consume_marker()? {
             Marker::List(size) => Ok(size),
             m => Err(errors::unexpected_marker("Marker::List", &m)),
         }
     }
 
-    fn parse_map(&mut self) -> SerdeResult<usize> {
+    fn parse_map(&mut self) -> PackstreamResult<usize> {
         match self.read.consume_marker()? {
             Marker::Map(size) => Ok(size),
             m => Err(errors::unexpected_marker("Marker::Map", &m)),
         }
     }
 
-    fn parse_map_or_struct(&mut self) -> SerdeResult<(bool, usize)> {
+    fn parse_map_or_struct(&mut self) -> PackstreamResult<(bool, usize)> {
         match self.read.consume_marker()? {
             Marker::Map(size) => Ok((true, size)),
             Marker::Struct(size) => Ok((false, size)),
@@ -141,23 +141,10 @@ where
         }
     }
 
-    fn parse_enum(&mut self) -> SerdeResult<()> {
+    fn parse_enum(&mut self) -> PackstreamResult<()> {
         match self.read.consume_marker()? {
             Marker::Map(len) if len == 1 => Ok(()),
             m => Err(errors::unexpected_marker("Marker::Map(1)", &m)),
-        }
-    }
-
-    fn try_end_stream(&mut self) -> bool {
-        match self.read.peek_marker() {
-            Err(_) => false,
-            Ok(marker) => match marker {
-                Marker::EOS => {
-                    self.read.scratch_peeked();
-                    true
-                }
-                _ => false,
-            },
         }
     }
 }
@@ -166,9 +153,9 @@ impl<'de, 'a, U> de::Deserializer<'de> for &'a mut Deserializer<U>
 where
     U: Unpacker<'de>,
 {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -182,123 +169,122 @@ where
             Marker::I64(_) => self.deserialize_i64(visitor),
             Marker::F64(_) => self.deserialize_f64(visitor),
             Marker::Struct(_) => self.deserialize_map(visitor),
-            m @ Marker::EOS => Err(errors::unexpected_marker("not Marker::EOS", &m)),
         }
     }
 
-    fn deserialize_bool<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_bool<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_bool(self.parse_bool()?)
     }
 
-    fn deserialize_i8<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i8<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i8(self.parse_int()?)
     }
 
-    fn deserialize_i16<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i16<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i16(self.parse_int()?)
     }
 
-    fn deserialize_i32<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i32<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i32(self.parse_int()?)
     }
 
-    fn deserialize_i64<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i64<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_i64(self.parse_int()?)
     }
 
-    fn deserialize_u8<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u8<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u8(self.parse_int()?)
     }
 
-    fn deserialize_u16<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u16<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u16(self.parse_int()?)
     }
 
-    fn deserialize_u32<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u32<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u32(self.parse_int()?)
     }
 
-    fn deserialize_u64<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u64<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_u64(self.parse_int()?)
     }
 
-    fn deserialize_f32<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_f32<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_f32(self.parse_f64()? as f32)
     }
 
-    fn deserialize_f64<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_f64<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_f64(self.parse_f64()?)
     }
 
-    fn deserialize_char<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_char<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_char(self.parse_char()?)
     }
 
-    fn deserialize_str<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_str<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_borrowed_str(self.parse_str()?)
     }
 
-    fn deserialize_string<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_string<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_string(self.parse_string()?)
     }
 
-    fn deserialize_bytes<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_bytes<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_borrowed_bytes(self.parse_bytes()?)
     }
 
-    fn deserialize_byte_buf<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_byte_buf<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_byte_buf(self.parse_bytes()?.to_owned())
     }
 
-    fn deserialize_option<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_option<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -309,7 +295,7 @@ where
         }
     }
 
-    fn deserialize_unit<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_unit<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -317,21 +303,21 @@ where
         visitor.visit_unit()
     }
 
-    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_unit(visitor)
     }
 
-    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
 
-    fn deserialize_seq<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_seq<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -339,7 +325,7 @@ where
         visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
-    fn deserialize_tuple<V>(self, size: usize, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_tuple<V>(self, size: usize, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -355,7 +341,7 @@ where
         name: &str,
         size: usize,
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -370,7 +356,7 @@ where
         visitor.visit_seq(SeqAccess::new(self, list_len))
     }
 
-    fn deserialize_map<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_map<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -392,7 +378,7 @@ where
         _name: &str,
         _fields: &'static [&'static str],
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -408,7 +394,7 @@ where
         _name: &str,
         _variants: &'static [&'static str],
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -416,14 +402,14 @@ where
         visitor.visit_enum(VariantAccess { de: self })
     }
 
-    fn deserialize_identifier<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_identifier<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_str(visitor)
     }
 
-    fn deserialize_ignored_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -449,13 +435,13 @@ impl<'a, 'de, U> de::SeqAccess<'de> for SeqAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn next_element_seed<T>(&mut self, seed: T) -> SerdeResult<Option<T::Value>>
+    fn next_element_seed<T>(&mut self, seed: T) -> PackstreamResult<Option<T::Value>>
     where
         T: de::DeserializeSeed<'de>,
     {
-        if self.len == 0 || self.de.try_end_stream() {
+        if self.len == 0 {
             return Ok(None);
         }
 
@@ -474,9 +460,9 @@ impl<'a, 'de, U> de::MapAccess<'de> for MapAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
+    fn next_key_seed<K>(&mut self, seed: K) -> PackstreamResult<Option<K::Value>>
     where
         K: de::DeserializeSeed<'de>,
     {
@@ -489,7 +475,7 @@ where
         Ok(Some(val))
     }
 
-    fn next_value_seed<V>(&mut self, seed: V) -> SerdeResult<V::Value>
+    fn next_value_seed<V>(&mut self, seed: V) -> PackstreamResult<V::Value>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -505,10 +491,10 @@ impl<'a, 'de, U> de::EnumAccess<'de> for VariantAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = SerdeError;
+    type Error = PackstreamError;
     type Variant = Self;
 
-    fn variant_seed<V>(self, seed: V) -> SerdeResult<(V::Value, Self)>
+    fn variant_seed<V>(self, seed: V) -> PackstreamResult<(V::Value, Self)>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -521,27 +507,27 @@ impl<'a, 'de, U> de::VariantAccess<'de> for VariantAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn unit_variant(self) -> SerdeResult<()> {
+    fn unit_variant(self) -> PackstreamResult<()> {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn newtype_variant_seed<T>(self, seed: T) -> SerdeResult<T::Value>
+    fn newtype_variant_seed<T>(self, seed: T) -> PackstreamResult<T::Value>
     where
         T: de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.de)
     }
 
-    fn tuple_variant<V>(self, _len: usize, visitor: V) -> SerdeResult<V::Value>
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         de::Deserializer::deserialize_seq(self.de, visitor)
     }
 
-    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> SerdeResult<V::Value>
+    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -565,9 +551,9 @@ impl<'a, 'de, U> de::MapAccess<'de> for StructureAccess<'a, U>
 where
     U: Unpacker<'de>,
 {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
+    fn next_key_seed<K>(&mut self, seed: K) -> PackstreamResult<Option<K::Value>>
     where
         K: de::DeserializeSeed<'de>,
     {
@@ -590,7 +576,7 @@ where
         }
     }
 
-    fn next_value_seed<V>(&mut self, seed: V) -> SerdeResult<V::Value>
+    fn next_value_seed<V>(&mut self, seed: V) -> PackstreamResult<V::Value>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -608,7 +594,7 @@ where
                 self.state = StructureAccessState::Done;
                 Ok(seed.deserialize(&mut *self.de)?)
             }
-            StructureAccessState::Done => Err(SerdeError::impl_err(
+            StructureAccessState::Done => Err(PackstreamError::impl_err(
                 "StructureAccess value_seed cannot reach State::Done",
             )),
         }

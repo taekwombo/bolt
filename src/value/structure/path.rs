@@ -2,7 +2,7 @@ use super::{BoltStructure, Value};
 use super::{Node, UnboundRelationship};
 use crate::{
     constants::STRUCTURE_NAME,
-    error::{SerdeError, SerdeResult},
+    error::{PackstreamError, PackstreamResult},
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -89,9 +89,9 @@ impl<'de> de::Visitor<'de> for PathVisitor {
 }
 
 impl<'de> de::Deserializer<'de> for Path {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {

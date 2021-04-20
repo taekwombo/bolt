@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use serde_bolt::constants::marker;
-use serde_bolt::{from_bytes, to_bytes, Value};
+use packstream_serde::constants::marker;
+use packstream_serde::{from_bytes, to_bytes, Value};
 use serde_derive::{Deserialize, Serialize};
 use std::fmt::Debug;
 

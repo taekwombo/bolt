@@ -1,49 +1,40 @@
 use super::constants::marker::*;
-use super::error::{SerdeError, SerdeResult};
-use std::convert::TryFrom;
+use super::error::{PackstreamError, PackstreamResult};
 use std::fmt;
 
-macro_rules! to_bytes {
-    ($marker_b:expr, $t:ty, $e:expr) => {{
-        let mut __header = vec![$marker_b];
-        __header.extend_from_slice(&<$t>::try_from($e).unwrap().to_be_bytes());
-        __header
-    }};
-    // i64
-    ($marker_b:expr, $e:expr) => {{
-        let mut __header = vec![$marker_b];
-        __header.extend_from_slice(&$e.to_be_bytes());
-        __header
-    }};
-    // f64
-    ($e:expr) => {{
-        let mut __header = vec![FLOAT_64];
-        __header.extend_from_slice(&$e.to_bits().to_be_bytes());
-        __header
-    }};
-}
-
+/// Represents the marker byte of the core packstream data types.
+///
+/// The core data types can be one of:
+///
+/// * `Null`        missing or empty value
+/// * `Boolean`     **true** or **false**
+/// * `Integer`     signed 64-bit integer
+/// * `Float`       64-bit floating point number
+/// * `Bytes`       byte array
+/// * `String`      unicode text, **UTF-8**
+/// * `List`        ordered collection of values
+/// * `Dictionary`  collection of key-value entries (no order guaranteed)
+/// * `Structure`   composite value with a type signature
 #[derive(Debug, PartialEq, Clone)]
 pub enum Marker {
-    I64(i64),      // TinyInt, Int8, Int16, Int32, Int64
-    F64(f64),      // Float64
-    String(usize), // TinyString, String8, String16, String32
-    List(usize),   // TinyList, List8, List16, List32, ListStream
-    Bytes(usize),  // Bytes8, Bytes16, Bytes32
-    Map(usize),    // TinyMap, Map8, Map16, Map32, MapStream
-    Struct(usize), // TinyStruct, Struct8, Struct16
+    I64(i64),
+    F64(f64),
+    String(usize),
+    List(usize),
+    Bytes(usize),
+    Map(usize),
+    Struct(usize),
     Null,
     True,
     False,
-    EOS, // End of Stream
+}
+
+fn type_size_exceeded(marker_type: &str, len: usize, max_len: usize) -> PackstreamError {
+    PackstreamError::create(format!("Cannot pack {} marker with size {}. Maximum size available for this data type is {}", marker_type, len, max_len))
 }
 
 impl Marker {
-    fn size_exceeded(marker_type: &str, len: usize) -> SerdeError {
-        SerdeError::create(format!("Cannot pack {} with size {}", marker_type, len))
-    }
-
-    pub(crate) fn inc_size(&mut self, size: usize) -> SerdeResult<()> {
+    pub(crate) fn inc_size(&mut self, size: usize) -> PackstreamResult<()> {
         match self {
             Self::String(len) => *len += size,
             Self::List(len) => *len += size,
@@ -51,8 +42,8 @@ impl Marker {
             Self::Map(len) => *len += size,
             Self::Struct(len) => *len += size,
             marker => {
-                return Err(SerdeError::create(format!(
-                    "Unexpected {}, expected Marker with size",
+                return Err(PackstreamError::create(format!(
+                    "Unexpected Marker {}, expected Marker with size",
                     marker
                 )))
             }
@@ -60,55 +51,76 @@ impl Marker {
         Ok(())
     }
 
-    pub(crate) fn to_vec(&self) -> SerdeResult<Vec<u8>> {
-        let bytes_vec = match self {
-            Self::String(len) => match len {
-                0x0..=0xF => vec![TINY_STRING + u8::try_from(*len).unwrap()],
-                0x10..=0xFF => vec![STRING_8, u8::try_from(*len).unwrap()],
-                0x100..=0xFFFF => to_bytes!(STRING_16, i16, *len),
-                0x10000..=0xFFFF_FFFF => to_bytes!(STRING_32, i32, *len),
-                _ => return Err(Marker::size_exceeded("String", *len)),
-            },
+    pub(crate) fn append_to_vec(&self, vec: &mut Vec<u8>) -> PackstreamResult<()> {
+        macro_rules! extend {
+            ($arr:expr) => {
+                vec.extend_from_slice(&$arr)
+            };
+            ($marker:ident, $num:ident, 2) => {
+                vec.extend_from_slice(&[$marker, ($num >> 8) as u8, $num as u8])
+            };
+            ($marker:ident, $num:ident, 4) => {
+                vec.extend_from_slice(&[$marker, ($num >> 24) as u8, ($num >> 16) as u8, ($num >> 8) as u8, $num as u8])
+            };
+            ($marker: ident, $num:ident, 8) => {{
+                vec.push($marker);
+                vec.extend_from_slice(&$num.to_be_bytes());
+            }};
+        }
+
+        match *self {
             Self::I64(int) => match int {
-                -0x10..=0x7F => i8::try_from(*int).unwrap().to_be_bytes().to_vec(),
-                -0x80..=-0x11 => to_bytes!(INT_8, i8, *int),
-                -0x8000..=-0x81 | 0x80..=0x7FFF => to_bytes!(INT_16, i16, *int),
-                -0x8000_0000..=-0x8001 | 0x8000..=0x7FFF_FFFF => to_bytes!(INT_32, i32, *int),
-                _ => to_bytes!(INT_64, int),
+                -0x10..=0x7F => extend!([int as u8]),
+                -0x80..=-0x11 => extend!([INT_8, int as u8]),
+                -0x8000..=-0x81 | 0x80..=0x7FFF => extend!(INT_16, int, 2),
+                -0x8000_0000..=-0x8001 | 0x8000..=0x7FFF_FFFF => extend!(INT_32, int, 4),
+                _ => extend!(INT_64, int, 8),
             },
-            Self::List(len) => match len {
-                0x0..=0xF => vec![TINY_LIST + u8::try_from(*len).unwrap()],
-                0x10..=0xFF => vec![LIST_8, u8::try_from(*len).unwrap()],
-                0x100..=0xFFFF => to_bytes!(LIST_16, u16, *len),
-                0x10000..=0xFFFF_FFFF => to_bytes!(LIST_32, u32, *len),
-                _ => vec![LIST_STREAM],
+            Self::F64(float) => {
+                vec.push(FLOAT_64);
+                vec.extend_from_slice(&float.to_bits().to_be_bytes());
             },
-            Self::Bytes(len) => match len {
-                0x0..=0xFF => vec![BYTES_8, u8::try_from(*len).unwrap()],
-                0x100..=0xFFFF => to_bytes!(BYTES_16, u16, *len),
-                0x10000..=0xFFFF_FFFF => to_bytes!(BYTES_32, u32, *len),
-                _ => return Err(Marker::size_exceeded("Bytes", *len)),
+            Self::String(size) => match size {
+                0x0..=0xF => extend!([TINY_STRING + size as u8]),
+                0x10..=0xFF => extend!([STRING_8, size as u8]),
+                0x100..=0xFFFF => extend!(STRING_16, size, 2),
+                0x10000..=0xFFFF_FFFF => extend!(STRING_32, size, 4),
+                _ => return Err(type_size_exceeded("String", size, 0xFFFF_FFFF)),
+
             },
-            Self::Map(len) => match len {
-                0x0..=0xF => vec![TINY_MAP + u8::try_from(*len).unwrap()],
-                0x10..=0xFF => vec![MAP_8, u8::try_from(*len).unwrap()],
-                0x100..=0xFFFF => to_bytes!(MAP_16, u16, *len),
-                0x10000..=0xFFFF_FFFF => to_bytes!(MAP_32, u32, *len),
-                _ => vec![MAP_STREAM],
+            Self::List(size) => match size {
+                0x0..=0xF => extend!([TINY_LIST + size as u8]),
+                0x10..=0xFF => extend!([LIST_8, size as u8]),
+                0x100..=0xFFFF => extend!(LIST_16, size, 2),
+                0x10000..=0xFFFF_FFFF => extend!(LIST_32, size, 4),
+                _ => vec.push(LIST_STREAM),
             },
-            Self::Struct(len) => match len {
-                0x0..=0xF => vec![TINY_STRUCT + u8::try_from(*len).unwrap()],
-                0x10..=0xFF => vec![STRUCT_8, u8::try_from(*len).unwrap()],
-                0x100..=0xFFFF => to_bytes!(STRUCT_16, u16, *len),
-                _ => return Err(Marker::size_exceeded("Struct", *len)),
+
+            Self::Bytes(size) => match size {
+                0x0..=0xFF => extend!([BYTES_8, size as u8]),
+                0x100..=0xFFFF => extend!(BYTES_16, size, 2),
+                0x10000..=0xFFFF_FFFF => extend!(BYTES_32, size, 4),
+                _ => return Err(type_size_exceeded("Bytes", size, 0xFFFF_FFFF)),
             },
-            Self::Null => vec![NULL],
-            Self::True => vec![TRUE],
-            Self::False => vec![FALSE],
-            Self::F64(value) => to_bytes!(value),
-            Self::EOS => vec![END_OF_STREAM],
+            Self::Map(size) => match size {
+                0x0..=0xF => extend!([TINY_MAP + size as u8]),
+                0x10..=0xFF => extend!([MAP_8, size as u8]),
+                0x100..=0xFFFF => extend!(MAP_16, size, 2),
+                0x10000..=0xFFFF_FFFF => extend!(MAP_32, size, 4),
+                _ => vec.push(MAP_STREAM),
+            },
+            Self::Struct(size) => match size {
+                0x0..=0xF => extend!([TINY_STRUCT + size as u8]),
+                0x10..=0xFF => extend!([STRUCT_8, size as u8]),
+                0x100..=0xFFFF => extend!(STRUCT_16, size, 2),
+                _ => return Err(type_size_exceeded("Struct", size, 0xFFFF)),
+            },
+            Self::Null => vec.push(NULL),
+            Self::True => vec.push(TRUE),
+            Self::False => vec.push(FALSE),
         };
-        Ok(bytes_vec)
+
+        Ok(())
     }
 }
 
@@ -120,7 +132,6 @@ impl fmt::Display for Marker {
             Marker::Null => write!(f, "Marker::Null"),
             Marker::True => write!(f, "Marker::True"),
             Marker::False => write!(f, "Marker::False"),
-            Marker::EOS => write!(f, "Marker::EOS"),
             Marker::Struct(len) => write!(f, "Marker::Struct({})", len),
             Marker::Map(len) => write!(f, "Marker::Map({})", len),
             Marker::List(len) => write!(f, "Marker::List({})", len),
@@ -134,16 +145,22 @@ impl fmt::Display for Marker {
 mod tests {
     use super::*;
 
-    macro_rules! assert_marker_to_vec {
+    macro_rules! assert_marker_extend_vec {
         ($($marker:expr => $expected:expr),* $(,)*) => {
-            $(assert_eq!($marker.to_vec().unwrap(), $expected);)*
+            $({
+                let mut _tmp: Vec<u8> = vec![];
+                let _res = $marker.append_to_vec(&mut _tmp);
+
+                assert!(_res.is_ok());
+                assert_eq!(_tmp, $expected);
+            })*
         };
     }
 
     #[test]
     #[allow(clippy::cognitive_complexity)]
-    fn test_marker_to_vec() {
-        assert_marker_to_vec! {
+    fn test_marker_append_to_vec() {
+        assert_marker_extend_vec! {
             Marker::I64(127) => [127],
             Marker::I64(-16) => [240],
             Marker::I64(-128) => [INT_8, 128],
@@ -179,11 +196,12 @@ mod tests {
             Marker::Null => [NULL],
             Marker::True => [TRUE],
             Marker::False => [FALSE],
-            Marker::EOS => [END_OF_STREAM],
         };
 
-        assert!(Marker::Struct(256 * 256 * 256).to_vec().is_err());
-        assert!(Marker::String(256 * 256 * 256 * 256).to_vec().is_err());
-        assert!(Marker::Bytes(256 * 256 * 256 * 256).to_vec().is_err());
+        let mut test_vec = vec![];
+
+        assert!(Marker::Struct(256 * 256 * 256).append_to_vec(&mut test_vec).is_err());
+        assert!(Marker::String(256 * 256 * 256 * 256).append_to_vec(&mut test_vec).is_err());
+        assert!(Marker::Bytes(256 * 256 * 256 * 256).append_to_vec(&mut test_vec).is_err());
     }
 }
