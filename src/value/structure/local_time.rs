@@ -1,82 +1,83 @@
-use super::{BoltStructure, Single};
+use super::super::Value;
 use crate::{
     constants::STRUCTURE_NAME,
+    constants::structure,
     error::{PackstreamError, PackstreamResult},
-    Value,
+    packstream::{PackstreamStructure, Single},
 };
 use serde::{
     de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct Failure {
-    pub metadata: HashMap<String, Value>,
+pub struct LocalTime {
+    pub nanoseconds: i64,
 }
 
-impl fmt::Display for Failure {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Failure").field(&self.metadata).finish()
-    }
-}
-
-impl BoltStructure for Failure {
-    const SIG: u8 = 0x7F;
+impl PackstreamStructure for LocalTime {
+    const SIG: u8 = structure::LOCAL_TIME;
     const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Single<HashMap<String, Value>>;
+    type Fields = Single<i64>;
 
     fn into_value(self) -> Value {
         value_map! {
-            "metadata" => Value::Map(self.metadata),
+            "nanoseconds" => Value::I64(self.nanoseconds),
         }
     }
 }
 
-impl ser::Serialize for Failure {
+impl fmt::Display for LocalTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("LocalTime")
+            .field("nanoseconds", &self.nanoseconds)
+            .finish()
+    }
+}
+
+impl ser::Serialize for LocalTime {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
             serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.metadata)?;
+        ts_serializer.serialize_field(&self.nanoseconds)?;
         ts_serializer.end()
     }
 }
 
-impl<'de> de::Deserialize<'de> for Failure {
-    fn deserialize<D>(deserializer: D) -> Result<Failure, D::Error>
+impl<'de> de::Deserialize<'de> for LocalTime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_map(FailureVisitor)
+        deserializer.deserialize_map(LocalTimeVisitor)
     }
 }
 
-struct FailureVisitor;
+struct LocalTimeVisitor;
 
-impl<'de> de::Visitor<'de> for FailureVisitor {
-    type Value = Failure;
+impl<'de> de::Visitor<'de> for LocalTimeVisitor {
+    type Value = LocalTime;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Failure")
+        formatter.write_str("LocalTime")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        let fields = structure_access!(map_access, Failure);
-        Ok(Failure {
-            metadata: fields.value(),
-        })
+        let nanoseconds = structure_access!(map_access, LocalTime);
+        Ok(LocalTime { nanoseconds: nanoseconds.value() })
     }
 }
 
-impl<'de> de::Deserializer<'de> for Failure {
+impl<'de> de::Deserializer<'de> for LocalTime {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
@@ -92,3 +93,4 @@ impl<'de> de::Deserializer<'de> for Failure {
         tuple_struct map struct identifier enum ignored_any
     }
 }
+

@@ -1,7 +1,8 @@
-use super::{BoltStructure, Empty, Value};
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{message, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::{PackstreamStructure, Single},
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -10,65 +11,72 @@ use serde::{
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct Ignored;
+pub struct Record {
+    pub fields: Vec<Value>,
+}
 
-impl BoltStructure for Ignored {
-    const SIG: u8 = 0x7E;
-    const LEN: u8 = 0x00;
+impl PackstreamStructure for Record {
+    const SIG: u8 = message::RECORD;
+    const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Empty;
+    type Fields = Single<Vec<Value>>;
 
     fn into_value(self) -> Value {
-        value_map! {}
+        value_map! {
+            "fields" => Value::List(self.fields),
+        }
     }
 }
 
-impl fmt::Display for Ignored {
+impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Ignored")
+        f.debug_tuple("Record").field(&self.fields).finish()
     }
 }
 
-impl ser::Serialize for Ignored {
+impl ser::Serialize for Record {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer
-            .serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?
-            .end()
+        let mut ts_serializer =
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
+        ts_serializer.serialize_field(&self.fields)?;
+        ts_serializer.end()
     }
 }
 
-impl<'de> de::Deserialize<'de> for Ignored {
+impl<'de> de::Deserialize<'de> for Record {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_map(IgnoredVisitor)
+        deserializer.deserialize_map(RecordVisitor)
     }
 }
 
-struct IgnoredVisitor;
+struct RecordVisitor;
 
-impl<'de> de::Visitor<'de> for IgnoredVisitor {
-    type Value = Ignored;
+impl<'de> de::Visitor<'de> for RecordVisitor {
+    type Value = Record;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Ignored")
+        formatter.write_str("Record")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, Ignored);
-        Ok(Ignored)
+        let fields = structure_access!(map_access, Record);
+        Ok(Record {
+            fields: fields.value(),
+        })
     }
 }
 
-impl<'de> de::Deserializer<'de> for Ignored {
+impl<'de> de::Deserializer<'de> for Record {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>

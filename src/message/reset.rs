@@ -1,7 +1,8 @@
-use super::{BoltStructure, Empty, Value};
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{marker, message, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::{PackstreamStructure, Empty, EmptyPackstreamStructure},
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -10,10 +11,10 @@ use serde::{
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct DiscardAll;
+pub struct Reset;
 
-impl BoltStructure for DiscardAll {
-    const SIG: u8 = 0x2F;
+impl PackstreamStructure for Reset {
+    const SIG: u8 = message::RESET;
     const LEN: u8 = 0x00;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
@@ -24,13 +25,17 @@ impl BoltStructure for DiscardAll {
     }
 }
 
-impl fmt::Display for DiscardAll {
+impl EmptyPackstreamStructure for Reset {
+    const MSG: [u8; 2] = [marker::TINY_STRUCT, Self::SIG];
+}
+
+impl fmt::Display for Reset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("DiscardAll")
+        f.write_str("Reset")
     }
 }
 
-impl ser::Serialize for DiscardAll {
+impl ser::Serialize for Reset {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -41,34 +46,34 @@ impl ser::Serialize for DiscardAll {
     }
 }
 
-struct DiscardAllVisitor;
+impl<'de> de::Deserialize<'de> for Reset {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(ResetVisitor)
+    }
+}
 
-impl<'de> de::Visitor<'de> for DiscardAllVisitor {
-    type Value = DiscardAll;
+struct ResetVisitor;
+
+impl<'de> de::Visitor<'de> for ResetVisitor {
+    type Value = Reset;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("DiscardAll")
+        formatter.write_str("Reset")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, DiscardAll);
-        Ok(DiscardAll)
+        structure_access!(map_access, Reset);
+        Ok(Reset)
     }
 }
 
-impl<'de> de::Deserialize<'de> for DiscardAll {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(DiscardAllVisitor)
-    }
-}
-
-impl<'de> de::Deserializer<'de> for DiscardAll {
+impl<'de> de::Deserializer<'de> for Reset {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>

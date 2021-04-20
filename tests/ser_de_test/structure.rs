@@ -4,85 +4,29 @@ use packstream_serde::value::structure::*;
 use std::collections::HashMap;
 
 #[test]
-fn ack_failure() {
-    const BYTES: &[u8] = &[TINY_STRUCT + AckFailure::LEN, AckFailure::SIG];
-    ser_de::<AckFailure>(BYTES);
-    de_ser(AckFailure);
-    de_err::<AckFailure>(&[TINY_STRUCT, AckFailure::SIG + 1]);
-}
-
-#[test]
-fn discard_all() {
-    const BYTES: &[u8] = &[TINY_STRUCT + DiscardAll::LEN, DiscardAll::SIG];
-    ser_de::<DiscardAll>(BYTES);
-    de_ser(DiscardAll);
-    de_err::<DiscardAll>(&[TINY_STRUCT, DiscardAll::SIG + 1]);
-}
-
-#[test]
-fn failure() {
-    const BYTES: &[u8] = &[TINY_STRUCT + Failure::LEN, Failure::SIG, TINY_MAP];
-    ser_de::<Failure>(BYTES);
-    de_ser(Failure {
-        metadata: HashMap::new(),
-    });
-    de_err::<Failure>(&[TINY_STRUCT + 1, Failure::SIG + 1, TINY_MAP]);
-}
-
-#[test]
-fn fields() {
-    ser_de::<Empty>(&[TINY_LIST]);
-    de_ser(Empty);
-    de_err::<Empty>(&[TINY_LIST + 1, 0]);
-
-    ser_de::<Single<u8>>(&[TINY_LIST + 1, 0]);
-    de_ser(Single(100));
-    de_err::<Single<u8>>(&[TINY_LIST]);
-    de_err::<Single<u8>>(&[TINY_LIST + 2, 0, 0]);
-}
-
-#[test]
-fn ignored() {
-    const BYTES: &[u8] = &[TINY_STRUCT + Ignored::LEN, Ignored::SIG];
-    ser_de::<Ignored>(BYTES);
-    de_ser(Ignored);
-    de_err::<Ignored>(&[TINY_STRUCT, Ignored::SIG + 1]);
-}
-
-#[test]
-fn init() {
-    // https://boltprotocol.org/v1/#message-init
-    const BYTES: &[u8] = &[
-        0xB2, 0x01, 0x8C, 0x4D, 0x79, 0x43, 0x6C, 0x69, 0x65, 0x6E, 0x74, 0x2F, 0x31, 0x2E, 0x30,
-        0xA3, 0x86, 0x73, 0x63, 0x68, 0x65, 0x6D, 0x65, 0x85, 0x62, 0x61, 0x73, 0x69, 0x63, 0x89,
-        0x70, 0x72, 0x69, 0x6E, 0x63, 0x69, 0x70, 0x61, 0x6C, 0x85, 0x6E, 0x65, 0x6F, 0x34, 0x6A,
-        0x8B, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6E, 0x74, 0x69, 0x61, 0x6C, 0x73, 0x86, 0x73, 0x65,
-        0x63, 0x72, 0x65, 0x74,
-    ];
-
-    let s = String::from("test");
-
-    ser_de::<Init>(BYTES);
-    de_ser(Init {
-        client: s.clone(),
-        auth: BasicAuth {
-            scheme: String::from("basic"),
-            principal: s.clone(),
-            credentials: s.clone(),
-        }
-    });
-    de_err::<Init>(&BYTES[0..(BYTES.len() - 1)]);
-}
-
-#[test]
 fn node() {
     const BYTES: &[u8] = &[TINY_STRUCT + Node::LEN, Node::SIG, 0, TINY_LIST, TINY_MAP];
+
     ser_de::<Node>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
     de_ser(Node {
         identity: 0,
         labels: Vec::new(),
         properties: HashMap::new(),
     });
+    de_ser(Structure::Node(Node {
+        identity: 0,
+        labels: Vec::new(),
+        properties: HashMap::new(),
+    }));
+    de_ser(Value::Structure(Structure::Node(Node {
+        identity: 0,
+        labels: Vec::new(),
+        properties: HashMap::new(),
+    })));
+
     de_err::<Node>(&BYTES[0..(BYTES.len() - 1)]);
 }
 
@@ -97,30 +41,26 @@ fn path() {
     ];
 
     ser_de::<Path>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
     de_ser(Path {
         nodes: Vec::new(),
         relationships: Vec::new(),
         sequence: Vec::new(),
     });
+    de_ser(Structure::Path(Path {
+        nodes: Vec::new(),
+        relationships: Vec::new(),
+        sequence: Vec::new(),
+    }));
+    de_ser(Value::Structure(Structure::Path(Path {
+        nodes: Vec::new(),
+        relationships: Vec::new(),
+        sequence: Vec::new(),
+    })));
+
     de_err::<Path>(&BYTES[0..(BYTES.len() - 1)]);
-}
-
-#[test]
-fn pull_all() {
-    const BYTES: &[u8] = &[TINY_STRUCT + PullAll::LEN, PullAll::SIG];
-
-    ser_de::<PullAll>(BYTES);
-    de_ser(PullAll);
-    de_err::<PullAll>(&[TINY_STRUCT, PullAll::SIG + 1]);
-}
-
-#[test]
-fn record() {
-    const BYTES: &[u8] = &[TINY_STRUCT + Record::LEN, Record::SIG, TINY_LIST + 1, 1];
-
-    ser_de::<Record>(BYTES);
-    de_ser(Record { fields: Vec::new() });
-    de_err::<Record>(&BYTES[0..(BYTES.len() - 1)]);
 }
 
 #[test]
@@ -136,6 +76,9 @@ fn relationship() {
     ];
 
     ser_de::<Relationship>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
     de_ser(Relationship {
         identity: 0,
         start_node_identity: 0,
@@ -143,39 +86,22 @@ fn relationship() {
         r#type: String::new(),
         properties: HashMap::new(),
     });
+    de_ser(Structure::Relationship(Relationship {
+        identity: 0,
+        start_node_identity: 0,
+        end_node_identity: 0,
+        r#type: String::new(),
+        properties: HashMap::new(),
+    }));
+    de_ser(Value::Structure(Structure::Relationship(Relationship {
+        identity: 0,
+        start_node_identity: 0,
+        end_node_identity: 0,
+        r#type: String::new(),
+        properties: HashMap::new(),
+    })));
+
     de_err::<Relationship>(&BYTES[0..(BYTES.len() - 1)]);
-}
-
-#[test]
-fn reset() {
-    const BYTES: &[u8] = &[TINY_STRUCT + Reset::LEN, Reset::SIG];
-
-    ser_de::<Reset>(BYTES);
-    de_ser(Reset);
-    de_err::<Reset>(&[TINY_STRUCT, Reset::SIG + 1]);
-}
-
-#[test]
-fn run() {
-    const BYTES: &[u8] = &[TINY_STRUCT + Run::LEN, Run::SIG, TINY_STRING, TINY_MAP];
-
-    ser_de::<Run>(BYTES);
-    de_ser(Run {
-        statement: String::new(),
-        parameters: HashMap::new(),
-    });
-    de_err::<Run>(&BYTES[0..(BYTES.len() - 1)]);
-}
-
-#[test]
-fn success() {
-    const BYTES: &[u8] = &[TINY_STRUCT + Success::LEN, Success::SIG, TINY_MAP];
-
-    ser_de::<Success>(BYTES);
-    de_ser(Success {
-        metadata: HashMap::new(),
-    });
-    de_err::<Success>(&BYTES[0..(BYTES.len() - 1)]);
 }
 
 #[test]
@@ -189,10 +115,319 @@ fn unbound_relationship() {
     ];
 
     ser_de::<UnboundRelationship>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
     de_ser(UnboundRelationship {
         identity: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     });
+    de_ser(Structure::UnboundRelationship(UnboundRelationship {
+        identity: 0,
+        r#type: String::new(),
+        properties: HashMap::new(),
+    }));
+    de_ser(Value::Structure(Structure::UnboundRelationship(UnboundRelationship {
+        identity: 0,
+        r#type: String::new(),
+        properties: HashMap::new(),
+    })));
+
     de_err::<UnboundRelationship>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn date() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + Date::LEN,
+        Date::SIG,
+        0,
+    ];
+
+    ser_de::<Date>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(Date {
+        days: 0,
+    });
+    de_ser(Structure::Date(Date {
+        days: 0,
+    }));
+    de_ser(Value::Structure(Structure::Date(Date {
+        days: 0,
+    })));
+
+    de_err::<Date>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn time() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + Time::LEN,
+        Time::SIG,
+        0,
+        0
+    ];
+
+    ser_de::<Time>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(Time {
+        nanoseconds: 0,
+        tz_offset_seconds: 0,
+    });
+    de_ser(Structure::Time(Time {
+        nanoseconds: 0,
+        tz_offset_seconds: 0,
+    }));
+    de_ser(Value::Structure(Structure::Time(Time {
+        nanoseconds: 0,
+        tz_offset_seconds: 0,
+    })));
+
+    de_err::<Time>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn local_time() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + LocalTime::LEN,
+        LocalTime::SIG,
+        0
+    ];
+
+    ser_de::<LocalTime>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(LocalTime {
+        nanoseconds: 0,
+    });
+    de_ser(Structure::LocalTime(LocalTime {
+        nanoseconds: 0,
+    }));
+    de_ser(Value::Structure(Structure::LocalTime(LocalTime {
+        nanoseconds: 0,
+    })));
+
+    de_err::<LocalTime>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn date_time() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + DateTime::LEN,
+        DateTime::SIG,
+        0,
+        0,
+        0,
+    ];
+
+    ser_de::<DateTime>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(DateTime {
+        seconds: 0,
+        nanoseconds: 0,
+        tz_offset_seconds: 0,
+    });
+    de_ser(Structure::DateTime(DateTime {
+        seconds: 0,
+        nanoseconds: 0,
+        tz_offset_seconds: 0,
+    }));
+    de_ser(Value::Structure(Structure::DateTime(DateTime {
+        seconds: 0,
+        nanoseconds: 0,
+        tz_offset_seconds: 0,
+    })));
+
+    de_err::<DateTime>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn date_time_zone_id() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + DateTimeZoneId::LEN,
+        DateTimeZoneId::SIG,
+        0,
+        0,
+        TINY_STRING + 2,
+        b'n',
+        b'z',
+    ];
+
+    ser_de::<DateTimeZoneId>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(DateTimeZoneId {
+        seconds: 0,
+        nanoseconds: 0,
+        tz_id: String::from("nz"),
+    });
+    de_ser(Structure::DateTimeZoneId(DateTimeZoneId {
+        seconds: 0,
+        nanoseconds: 0,
+        tz_id: String::from("nz"),
+    }));
+    de_ser(Value::Structure(Structure::DateTimeZoneId(DateTimeZoneId {
+        seconds: 0,
+        nanoseconds: 0,
+        tz_id: String::from("nz"),
+    })));
+
+    de_err::<DateTimeZoneId>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn local_date_time() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + LocalDateTime::LEN,
+        LocalDateTime::SIG,
+        0,
+        0,
+    ];
+
+    ser_de::<LocalDateTime>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(LocalDateTime {
+        seconds: 0,
+        nanoseconds: 0,
+    });
+    de_ser(Structure::LocalDateTime(LocalDateTime {
+        seconds: 0,
+        nanoseconds: 0,
+    }));
+    de_ser(Value::Structure(Structure::LocalDateTime(LocalDateTime {
+        seconds: 0,
+        nanoseconds: 0,
+    })));
+
+    de_err::<LocalDateTime>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn duration() {
+    const BYTES: &[u8] = &[
+        TINY_STRUCT + Duration::LEN,
+        Duration::SIG,
+        0,
+        0,
+        0,
+        0,
+    ];
+
+    ser_de::<Duration>(BYTES);
+    ser_de::<Structure>(BYTES);
+    ser_de::<Value>(BYTES);
+
+    de_ser(Duration {
+        months: 0,
+        days: 0,
+        seconds: 0,
+        nanoseconds: 0,
+    });
+    de_ser(Structure::Duration(Duration {
+        months: 0,
+        days: 0,
+        seconds: 0,
+        nanoseconds: 0,
+    }));
+    de_ser(Value::Structure(Structure::Duration(Duration {
+        months: 0,
+        days: 0,
+        seconds: 0,
+        nanoseconds: 0,
+    })));
+
+    de_err::<Duration>(&BYTES[0..(BYTES.len() - 1)]);
+}
+
+#[test]
+fn point2d() {
+    let mut bytes: Vec<u8> = vec![
+        TINY_STRUCT + Point2D::LEN,
+        Point2D::SIG,
+        0
+
+    ];
+
+    bytes.push(FLOAT_64);
+    bytes.extend_from_slice(&0.0f64.to_bits().to_be_bytes());
+    bytes.push(FLOAT_64);
+    bytes.extend_from_slice(&0.0f64.to_bits().to_be_bytes());
+
+    let bytes = &bytes;
+
+    ser_de::<Point2D>(bytes);
+    ser_de::<Structure>(bytes);
+    ser_de::<Value>(bytes);
+
+    de_ser(Point2D {
+        srid: 0,
+        x: 0.0,
+        y: 0.0,
+    });
+    de_ser(Structure::Point2D(Point2D {
+        srid: 0,
+        x: 0.0,
+        y: 0.0,
+    }));
+    de_ser(Value::Structure(Structure::Point2D(Point2D {
+        srid: 0,
+        x: 0.0,
+        y: 0.0,
+    })));
+
+    de_err::<Point2D>(&bytes[0..(bytes.len() - 1)]);
+}
+
+#[test]
+fn point3d() {
+    let mut bytes: Vec<u8> = vec![
+        TINY_STRUCT + Point3D::LEN,
+        Point3D::SIG,
+        0
+    ];
+
+    bytes.push(FLOAT_64);
+    bytes.extend_from_slice(&0.0f64.to_bits().to_be_bytes());
+    bytes.push(FLOAT_64);
+    bytes.extend_from_slice(&0.0f64.to_bits().to_be_bytes());
+    bytes.push(FLOAT_64);
+    bytes.extend_from_slice(&0.0f64.to_bits().to_be_bytes());
+
+    let bytes = &bytes;
+
+    ser_de::<Point3D>(bytes);
+    ser_de::<Structure>(bytes);
+    ser_de::<Value>(bytes);
+
+    de_ser(Point3D {
+        srid: 0,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    });
+    de_ser(Structure::Point3D(Point3D {
+        srid: 0,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    }));
+    de_ser(Value::Structure(Structure::Point3D(Point3D {
+        srid: 0,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    })));
+
+    de_err::<Point3D>(&bytes[0..(bytes.len() - 1)]);
 }

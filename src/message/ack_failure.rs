@@ -1,7 +1,8 @@
-use super::{BoltStructure, Empty, Value};
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{message, marker, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::{PackstreamStructure, EmptyPackstreamStructure, Empty},
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -10,10 +11,10 @@ use serde::{
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct Reset;
+pub struct AckFailure;
 
-impl BoltStructure for Reset {
-    const SIG: u8 = 0x0F;
+impl PackstreamStructure for AckFailure {
+    const SIG: u8 = message::ACK_FAILURE;
     const LEN: u8 = 0x00;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
@@ -24,13 +25,17 @@ impl BoltStructure for Reset {
     }
 }
 
-impl fmt::Display for Reset {
+impl EmptyPackstreamStructure for AckFailure {
+    const MSG: [u8; 2] = [marker::TINY_STRUCT, Self::SIG];
+}
+
+impl fmt::Display for AckFailure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Reset")
+        f.write_str("AckFailure")
     }
 }
 
-impl ser::Serialize for Reset {
+impl ser::Serialize for AckFailure {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -41,34 +46,34 @@ impl ser::Serialize for Reset {
     }
 }
 
-impl<'de> de::Deserialize<'de> for Reset {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(ResetVisitor)
-    }
-}
+struct AckFailureVisitor;
 
-struct ResetVisitor;
-
-impl<'de> de::Visitor<'de> for ResetVisitor {
-    type Value = Reset;
+impl<'de> de::Visitor<'de> for AckFailureVisitor {
+    type Value = AckFailure;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Reset")
+        formatter.write_str("AckFailure")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, Reset);
-        Ok(Reset)
+        structure_access!(map_access, AckFailure);
+        Ok(AckFailure)
     }
 }
 
-impl<'de> de::Deserializer<'de> for Reset {
+impl<'de> de::Deserialize<'de> for AckFailure {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(AckFailureVisitor)
+    }
+}
+
+impl<'de> de::Deserializer<'de> for AckFailure {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
@@ -81,6 +86,6 @@ impl<'de> de::Deserializer<'de> for Reset {
     forward_to_deserialize_any! {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct identifier enum ignored_any
+        tuple_struct map struct enum identifier ignored_any
     }
 }

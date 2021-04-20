@@ -1,8 +1,8 @@
-use super::{EmptyBoltStructure, BoltStructure, Empty, Value};
 use crate::{
-    constants::STRUCTURE_NAME,
-    constants::marker,
+    constants::{message, marker, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::{PackstreamStructure, EmptyPackstreamStructure, Empty},
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -11,10 +11,10 @@ use serde::{
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct AckFailure;
+pub struct Ignored;
 
-impl BoltStructure for AckFailure {
-    const SIG: u8 = 0x0E;
+impl PackstreamStructure for Ignored {
+    const SIG: u8 = message::IGNORED;
     const LEN: u8 = 0x00;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
@@ -25,17 +25,17 @@ impl BoltStructure for AckFailure {
     }
 }
 
-impl EmptyBoltStructure for AckFailure {
+impl EmptyPackstreamStructure for Ignored {
     const MSG: [u8; 2] = [marker::TINY_STRUCT, Self::SIG];
 }
 
-impl fmt::Display for AckFailure {
+impl fmt::Display for Ignored {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("AckFailure")
+        f.write_str("Ignored")
     }
 }
 
-impl ser::Serialize for AckFailure {
+impl ser::Serialize for Ignored {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -46,34 +46,34 @@ impl ser::Serialize for AckFailure {
     }
 }
 
-struct AckFailureVisitor;
+impl<'de> de::Deserialize<'de> for Ignored {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(IgnoredVisitor)
+    }
+}
 
-impl<'de> de::Visitor<'de> for AckFailureVisitor {
-    type Value = AckFailure;
+struct IgnoredVisitor;
+
+impl<'de> de::Visitor<'de> for IgnoredVisitor {
+    type Value = Ignored;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("AckFailure")
+        formatter.write_str("Ignored")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, AckFailure);
-        Ok(AckFailure)
+        structure_access!(map_access, Ignored);
+        Ok(Ignored)
     }
 }
 
-impl<'de> de::Deserialize<'de> for AckFailure {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(AckFailureVisitor)
-    }
-}
-
-impl<'de> de::Deserializer<'de> for AckFailure {
+impl<'de> de::Deserializer<'de> for Ignored {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
@@ -86,6 +86,6 @@ impl<'de> de::Deserializer<'de> for AckFailure {
     forward_to_deserialize_any! {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
+        tuple_struct map struct identifier enum ignored_any
     }
 }

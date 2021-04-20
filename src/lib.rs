@@ -68,6 +68,9 @@ pub mod value;
 #[doc(inline)]
 pub use value::{from_value, to_value, Structure, Value, structure};
 
+pub mod message;
+pub use message::{RequestMessage, SummaryMessage, Record};
+
 mod de;
 #[doc(inline)]
 pub use de::from_bytes;

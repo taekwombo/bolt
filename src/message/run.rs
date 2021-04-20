@@ -1,8 +1,8 @@
-use super::super::Value;
 use crate::{
-    constants::{structure, STRUCTURE_NAME},
+    constants::{message, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
     packstream::PackstreamStructure,
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -11,84 +11,79 @@ use serde::{
 use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
-pub struct Node {
-    pub identity: i64,
-    pub labels: Vec<String>,
-    pub properties: HashMap<String, Value>,
+pub struct Run {
+    pub statement: String,
+    pub parameters: HashMap<String, Value>,
 }
 
-impl PackstreamStructure for Node {
-    const SIG: u8 = structure::NODE;
-    const LEN: u8 = 0x03;
+impl PackstreamStructure for Run {
+    const SIG: u8 = message::RUN;
+    const LEN: u8 = 0x02;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = (i64, Vec<String>, HashMap<String, Value>);
+    type Fields = (String, HashMap<String, Value>);
 
     fn into_value(self) -> Value {
         value_map! {
-            "identity" => Value::I64(self.identity),
-            "labels" => Value::List(self.labels.into_iter().map(Value::String).collect()),
-            "properties" => Value::Map(self.properties),
+            "statement" => Value::String(self.statement),
+            "parameters" => Value::Map(self.parameters),
         }
     }
 }
 
-impl fmt::Display for Node {
+impl fmt::Display for Run {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Node")
-            .field("identity", &self.identity)
-            .field("labels", &self.labels)
-            .field("properties", &self.properties)
+        f.debug_struct("Run")
+            .field("statement", &self.statement)
+            .field("parameters", &self.parameters)
             .finish()
     }
 }
 
-impl ser::Serialize for Node {
+impl<'a> ser::Serialize for Run {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.identity)?;
-        ts_serializer.serialize_field(&self.labels)?;
-        ts_serializer.serialize_field(&self.properties)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Run::SERIALIZE_LEN)?;
+        ts_serializer.serialize_field(&self.statement)?;
+        ts_serializer.serialize_field(&self.parameters)?;
         ts_serializer.end()
     }
 }
 
-impl<'de> de::Deserialize<'de> for Node {
+impl<'de> de::Deserialize<'de> for Run {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_map(NodeVisitor)
+        deserializer.deserialize_map(RunVisitor)
     }
 }
 
-struct NodeVisitor;
+struct RunVisitor;
 
-impl<'de> de::Visitor<'de> for NodeVisitor {
-    type Value = Node;
+impl<'de> de::Visitor<'de> for RunVisitor {
+    type Value = Run;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Node")
+        formatter.write_str("Run")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        let (identity, labels, properties) = structure_access!(map_access, Node);
-        Ok(Node {
-            identity,
-            labels,
-            properties,
+        let (statement, parameters) = structure_access!(map_access, Run);
+        Ok(Run {
+            statement,
+            parameters,
         })
     }
 }
 
-impl<'de> de::Deserializer<'de> for Node {
+impl<'de> de::Deserializer<'de> for Run {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>

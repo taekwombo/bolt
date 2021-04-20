@@ -1,6 +1,7 @@
 use super::*;
 
 mod deserialize;
+mod message;
 mod packstream;
 mod serialize;
 mod structure;

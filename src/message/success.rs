@@ -1,79 +1,82 @@
-use super::{EmptyBoltStructure, BoltStructure, Empty, Value};
 use crate::{
-    constants::STRUCTURE_NAME,
-    constants::marker,
+    constants::{message, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::{PackstreamStructure, Single},
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
-pub struct PullAll;
+pub struct Success {
+    pub metadata: HashMap<String, Value>,
+}
 
-impl BoltStructure for PullAll {
-    const SIG: u8 = 0x3F;
-    const LEN: u8 = 0x00;
+impl PackstreamStructure for Success {
+    const SIG: u8 = message::SUCCESS;
+    const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Empty;
+    type Fields = Single<HashMap<String, Value>>;
 
     fn into_value(self) -> Value {
-        value_map! {}
+        value_map! {
+            "metadata" => Value::Map(self.metadata),
+        }
     }
 }
 
-impl EmptyBoltStructure for PullAll {
-    const MSG: [u8; 2] = [marker::TINY_STRUCT, Self::SIG];
-}
-
-impl fmt::Display for PullAll {
+impl fmt::Display for Success {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("AckFailure")
+        f.debug_tuple("Success").field(&self.metadata).finish()
     }
 }
 
-impl ser::Serialize for PullAll {
+impl ser::Serialize for Success {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer
-            .serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?
-            .end()
+        let mut ts_serializer =
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
+        ts_serializer.serialize_field(&self.metadata)?;
+        ts_serializer.end()
     }
 }
 
-impl<'de> de::Deserialize<'de> for PullAll {
+impl<'de> de::Deserialize<'de> for Success {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_map(PullAllVisitor)
+        deserializer.deserialize_map(SuccessVisitor)
     }
 }
 
-struct PullAllVisitor;
+struct SuccessVisitor;
 
-impl<'de> de::Visitor<'de> for PullAllVisitor {
-    type Value = PullAll;
+impl<'de> de::Visitor<'de> for SuccessVisitor {
+    type Value = Success;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("PullAll")
+        formatter.write_str("Success")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        structure_access!(map_access, PullAll);
-        Ok(PullAll)
+        let fields = structure_access!(map_access, Success);
+        Ok(Success {
+            metadata: fields.value(),
+        })
     }
 }
 
-impl<'de> de::Deserializer<'de> for PullAll {
+impl<'de> de::Deserializer<'de> for Success {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
