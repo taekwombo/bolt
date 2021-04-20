@@ -1,6 +1,6 @@
 use super::{Structure, Value};
 use crate::constants::STRUCTURE_SIG_KEY;
-use crate::error::{SerdeError, SerdeResult};
+use crate::error::{PackstreamError, PackstreamResult};
 use serde::de::IntoDeserializer;
 use serde::{de, forward_to_deserialize_any};
 use serde_bytes::ByteBuf;
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
 
-pub fn from_value<T>(value: Value) -> SerdeResult<T>
+pub fn from_value<T>(value: Value) -> PackstreamResult<T>
 where
     T: de::DeserializeOwned,
 {
@@ -17,10 +17,10 @@ where
 }
 
 mod errors {
-    use super::{SerdeError, Value};
+    use super::{PackstreamError, Value};
 
-    pub(super) fn unexpected_type(expected: &str, actual: &Value) -> SerdeError {
-        SerdeError::create(format!(
+    pub(super) fn unexpected_type(expected: &str, actual: &Value) -> PackstreamError {
+        PackstreamError::create(format!(
             "Unexpected type {}, expected {}.",
             actual, expected
         ))
@@ -121,9 +121,9 @@ impl<'de> de::Deserialize<'de> for Value {
 }
 
 impl<'de> de::Deserializer<'de> for Value {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -140,61 +140,61 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_u8<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u8<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_u64(visitor)
     }
 
-    fn deserialize_u16<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u16<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_u64(visitor)
     }
 
-    fn deserialize_u32<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u32<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_u64(visitor)
     }
 
-    fn deserialize_u64<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_u64<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         match self {
             Self::I64(i) => {
-                visitor.visit_u64(u64::try_from(i).map_err(|e| SerdeError::create(e.to_string()))?)
+                visitor.visit_u64(u64::try_from(i).map_err(|e| PackstreamError::create(e.to_string()))?)
             }
             v => Err(errors::unexpected_type("Value::I64", &v)),
         }
     }
 
-    fn deserialize_i8<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i8<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_i64(visitor)
     }
 
-    fn deserialize_i16<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i16<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_i64(visitor)
     }
 
-    fn deserialize_i32<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i32<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_i64(visitor)
     }
 
-    fn deserialize_i64<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_i64<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -204,14 +204,14 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_f32<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_f32<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_f64(visitor)
     }
 
-    fn deserialize_f64<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_f64<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -221,7 +221,7 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_bool<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_bool<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -231,14 +231,14 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_char<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_char<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_string(visitor)
     }
 
-    fn deserialize_str<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_str<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -248,7 +248,7 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_string<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_string<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -258,14 +258,14 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_bytes<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_bytes<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_byte_buf(visitor)
     }
 
-    fn deserialize_byte_buf<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_byte_buf<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -275,7 +275,7 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_option<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_option<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -285,7 +285,7 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_unit<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_unit<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -295,21 +295,21 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_unit(visitor)
     }
 
-    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
 
-    fn deserialize_seq<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_seq<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -321,7 +321,7 @@ impl<'de> de::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -348,14 +348,14 @@ impl<'de> de::Deserializer<'de> for Value {
         _name: &'static str,
         len: usize,
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_tuple(len, visitor)
     }
 
-    fn deserialize_map<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_map<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -374,7 +374,7 @@ impl<'de> de::Deserializer<'de> for Value {
         _name: &'static str,
         _keys: &'static [&'static str],
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -386,7 +386,7 @@ impl<'de> de::Deserializer<'de> for Value {
         _name: &'static str,
         _variants: &'static [&'static str],
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -416,14 +416,14 @@ impl<'de> de::Deserializer<'de> for Value {
         })
     }
 
-    fn deserialize_identifier<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_identifier<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
         self.deserialize_string(visitor)
     }
 
-    fn deserialize_ignored_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -437,10 +437,10 @@ struct SeqDeserializer {
 }
 
 impl<'de> de::Deserializer<'de> for SeqDeserializer {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
     #[inline]
-    fn deserialize_any<V>(mut self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(mut self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -461,9 +461,9 @@ impl<'de> de::Deserializer<'de> for SeqDeserializer {
 }
 
 impl<'de> de::SeqAccess<'de> for SeqDeserializer {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn next_element_seed<S>(&mut self, seed: S) -> SerdeResult<Option<S::Value>>
+    fn next_element_seed<S>(&mut self, seed: S) -> PackstreamResult<Option<S::Value>>
     where
         S: de::DeserializeSeed<'de>,
     {
@@ -506,9 +506,9 @@ where
 }
 
 impl<'de> de::Deserializer<'de> for StringDe<'de> {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -531,9 +531,9 @@ struct MapAccess {
 }
 
 impl<'de> de::MapAccess<'de> for MapAccess {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn next_key_seed<K>(&mut self, seed: K) -> SerdeResult<Option<K::Value>>
+    fn next_key_seed<K>(&mut self, seed: K) -> PackstreamResult<Option<K::Value>>
     where
         K: de::DeserializeSeed<'de>,
     {
@@ -546,7 +546,7 @@ impl<'de> de::MapAccess<'de> for MapAccess {
         }
     }
 
-    fn next_value_seed<V>(&mut self, seed: V) -> SerdeResult<V::Value>
+    fn next_value_seed<V>(&mut self, seed: V) -> PackstreamResult<V::Value>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -564,9 +564,9 @@ struct EnumAccess {
 
 impl<'de> de::EnumAccess<'de> for EnumAccess {
     type Variant = VariantAccess;
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn variant_seed<V>(self, seed: V) -> SerdeResult<(V::Value, Self::Variant)>
+    fn variant_seed<V>(self, seed: V) -> PackstreamResult<(V::Value, Self::Variant)>
     where
         V: de::DeserializeSeed<'de>,
     {
@@ -581,16 +581,16 @@ struct VariantAccess {
 }
 
 impl<'de> de::VariantAccess<'de> for VariantAccess {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn unit_variant(self) -> SerdeResult<()> {
+    fn unit_variant(self) -> PackstreamResult<()> {
         match self.value {
             Some(value) => de::Deserialize::deserialize(value),
             None => Ok(()),
         }
     }
 
-    fn newtype_variant_seed<T>(self, seed: T) -> SerdeResult<T::Value>
+    fn newtype_variant_seed<T>(self, seed: T) -> PackstreamResult<T::Value>
     where
         T: de::DeserializeSeed<'de>,
     {
@@ -602,7 +602,7 @@ impl<'de> de::VariantAccess<'de> for VariantAccess {
         }
     }
 
-    fn tuple_variant<V>(self, _size: usize, visitor: V) -> SerdeResult<V::Value>
+    fn tuple_variant<V>(self, _size: usize, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -624,7 +624,7 @@ impl<'de> de::VariantAccess<'de> for VariantAccess {
         self,
         _fields: &'static [&'static str],
         visitor: V,
-    ) -> SerdeResult<V::Value>
+    ) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {

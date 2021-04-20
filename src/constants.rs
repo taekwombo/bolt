@@ -5,9 +5,6 @@ pub(crate) const STRUCTURE_FIELDS_KEY: &str = "__BOLT_STRUCTURE_FIELDS_KEY__";
 pub(crate) const STRUCTURE_FIELDS_KEY_B: &[u8] = b"__BOLT_STRUCTURE_FIELDS_KEY__";
 pub(crate) const SIG_KEY: &str = "signature";
 
-/// [Marker] constants module.
-///
-/// [Marker]: https://boltprotocol.org/v1/#markers
 pub mod marker {
     pub const TINY_STRING: u8 = 0x80;
     pub const TINY_STRING_MAX: u8 = 0x8F;
@@ -44,22 +41,32 @@ pub mod marker {
     pub const END_OF_STREAM: u8 = 0xDF;
 }
 
-/// [Signature] constants module.
-///
-/// [Signature]: https://boltprotocol.org/v1/#signature
-pub mod signature {
-    pub const MSG_INIT: u8 = 0x01;
-    pub const MSG_RUN: u8 = 0x10;
-    pub const MSG_DISCARD_ALL: u8 = 0x2F;
-    pub const MSG_PULL_ALL: u8 = 0x3F;
-    pub const MSG_ACK_FAILURE: u8 = 0x0E;
-    pub const MSG_RESET: u8 = 0x0F;
-    pub const MSG_RECORD: u8 = 0x71;
-    pub const MSG_SUCCESS: u8 = 0x70;
-    pub const MSG_FAILURE: u8 = 0x7F;
-    pub const MSG_IGNORED: u8 = 0x7E;
-    pub const TYPE_NODE: u8 = 0x4E;
-    pub const TYPE_RELATIONSHIP: u8 = 0x52;
-    pub const TYPE_PATH: u8 = 0x50;
-    pub const TYPE_UNBOUND_RELATIONSHIP: u8 = 0x72;
+pub mod message {
+    pub const INIT: u8 = 0x01;
+    pub const ACK_FAILURE: u8 = 0x0E;
+    pub const RESET: u8 = 0x0F;
+    pub const RUN: u8 = 0x10;
+    pub const DISCARD_ALL: u8 = 0x2F;
+    pub const PULL_ALL: u8 = 0x3F;
+    pub const SUCCESS: u8 = 0x70;
+    pub const IGNORED: u8 = 0x7E;
+    pub const FAILURE: u8 = 0x7F;
+    pub const RECORD: u8 = 0x71;
 }
+
+pub mod structure {
+    pub const NODE: u8 = 0x4E;
+    pub const RELATIONSHIP: u8 = 0x52;
+    pub const UNBOUND_RELATIONSHIP: u8 = 0x72;
+    pub const PATH: u8 = 0x50;
+    pub const DATE: u8 = 0x44;
+    pub const TIME: u8 = 0x54;
+    pub const LOCAL_TIME: u8 = 0x74;
+    pub const DATE_TIME: u8 = 0x46;
+    pub const DATE_TIME_ZONE_ID: u8 = 0x66;
+    pub const LOCAL_DATE_TIME: u8 = 0x64;
+    pub const DURATION: u8 = 0x45;
+    pub const POINT_2D: u8 = 0x58;
+    pub const POINT_3D: u8 = 0x59;
+}
+

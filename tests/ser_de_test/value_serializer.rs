@@ -1,6 +1,6 @@
 use super::*;
 use serde::Serialize;
-use serde_bolt::to_value;
+use packstream_serde::to_value;
 
 fn ser<T: PartialEq + Debug + Serialize>(value: &T, expected: &Value) {
     let result = to_value(value);

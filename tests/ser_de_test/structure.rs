@@ -1,6 +1,6 @@
 use super::*;
-use serde_bolt::constants::marker::*;
-use serde_bolt::value::structure::*;
+use packstream_serde::constants::marker::*;
+use packstream_serde::value::structure::*;
 use std::collections::HashMap;
 
 #[test]

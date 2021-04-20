@@ -1,14 +1,14 @@
 use serde::{de, ser};
 use std::fmt;
 
-pub type SerdeResult<T> = std::result::Result<T, SerdeError>;
+pub type PackstreamResult<T> = std::result::Result<T, PackstreamError>;
 
 #[derive(Debug)]
-pub struct SerdeError {
+pub struct PackstreamError {
     err: Box<ErrorCode>,
 }
 
-impl SerdeError {
+impl PackstreamError {
     pub(crate) fn create(msg: impl Into<ErrorCode>) -> Self {
         Self {
             err: Box::new(msg.into()),
@@ -22,45 +22,45 @@ impl SerdeError {
     }
 }
 
-impl fmt::Display for SerdeError {
+impl fmt::Display for PackstreamError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.err)
     }
 }
 
-impl ser::Error for SerdeError {
+impl ser::Error for PackstreamError {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Self::create(msg.to_string())
     }
 }
 
-impl de::Error for SerdeError {
+impl de::Error for PackstreamError {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Self::create(msg.to_string())
     }
 
     fn invalid_type(unexp: de::Unexpected, exp: &dyn de::Expected) -> Self {
         if let de::Unexpected::Unit = unexp {
-            SerdeError::custom(format_args!("invalid type: null, expected {}", exp))
+            PackstreamError::custom(format_args!("invalid type: null, expected {}", exp))
         } else {
-            SerdeError::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
+            PackstreamError::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
         }
     }
 }
 
-impl std::error::Error for SerdeError {
+impl std::error::Error for PackstreamError {
     fn cause(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(self)
     }
 }
 
-impl From<std::str::Utf8Error> for SerdeError {
+impl From<std::str::Utf8Error> for PackstreamError {
     fn from(m: std::str::Utf8Error) -> Self {
         Self::create(m.to_string())
     }
 }
 
-impl From<std::string::FromUtf8Error> for SerdeError {
+impl From<std::string::FromUtf8Error> for PackstreamError {
     fn from(m: std::string::FromUtf8Error) -> Self {
         Self::create(m.to_string())
     }

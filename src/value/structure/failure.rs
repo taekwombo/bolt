@@ -1,7 +1,7 @@
 use super::{BoltStructure, Single};
 use crate::{
     constants::STRUCTURE_NAME,
-    error::{SerdeError, SerdeResult},
+    error::{PackstreamError, PackstreamResult},
     Value,
 };
 use serde::{
@@ -77,9 +77,9 @@ impl<'de> de::Visitor<'de> for FailureVisitor {
 }
 
 impl<'de> de::Deserializer<'de> for Failure {
-    type Error = SerdeError;
+    type Error = PackstreamError;
 
-    fn deserialize_any<V>(self, visitor: V) -> SerdeResult<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
     where
         V: de::Visitor<'de>,
     {
