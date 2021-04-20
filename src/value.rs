@@ -10,9 +10,9 @@ use std::fmt;
 
 pub use structure::Structure;
 
-/// Represents any valid [Bolt value].
+/// Represents any [Packstream value].
 ///
-/// [Bolt value]: https://boltprotocol.org/v1/#overview_2
+/// [Packstream value]: https://7687.org/packstream/packstream-specification-1.html
 #[derive(PartialEq)]
 pub enum Value {
     Null,

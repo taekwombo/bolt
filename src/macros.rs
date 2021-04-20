@@ -5,7 +5,7 @@ macro_rules! structure_access {
         check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
         let __fields = $map_access
-            .next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>(
+            .next_value::<<$structure as $crate::packstream::PackstreamStructure>::Fields>(
         )?;
         check!(__key, $map_access);
 
@@ -17,7 +17,7 @@ macro_rules! structure_access {
         check!(__key, $map_access, $crate::constants::STRUCTURE_FIELDS_KEY);
 
         let __fields = $map_access
-            .next_value::<<$structure as $crate::value::structure::BoltStructure>::Fields>(
+            .next_value::<<$structure as $crate::packstream::PackstreamStructure>::Fields>(
         )?;
         check!(__key, $map_access);
 
@@ -77,11 +77,12 @@ macro_rules! serialize_length {
 }
 
 /// Expands into Value::Map
+/// By default inserts "signature" key into a map with PackstreamStructure::SIG value.
 macro_rules! value_map {
     ($($key:literal => $value:expr,)*) => {
         {
             let mut __map = ::std::collections::HashMap::new();
-            __map.insert(String::from($crate::constants::SIG_KEY), $crate::value::Value::I64(<Self as $crate::value::structure::BoltStructure>::SIG as i64));
+            __map.insert(String::from($crate::constants::SIG_KEY), $crate::value::Value::I64(<Self as $crate::packstream::PackstreamStructure>::SIG as i64));
             $(__map.insert(String::from($key), $value);)*
             $crate::value::Value::Map(__map)
         }

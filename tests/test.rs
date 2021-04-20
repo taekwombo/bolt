@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use packstream_serde::constants::marker;
 use packstream_serde::{from_bytes, to_bytes, Value};
+use packstream_serde::packstream::PackstreamStructure;
 use serde_derive::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -24,6 +25,8 @@ macro_rules! map {
    }
 }
 
+// Serializes the `value` parameter and asserts that its
+// equal to the value of `expected` parameter.
 fn ser<T>(value: T, expected: &[u8])
 where
     T: Serialize,
@@ -36,6 +39,8 @@ where
     assert_eq!(expected, bytes.unwrap().as_slice());
 }
 
+// Assers that serialization of the `value` parameter
+// results in an `Err(_)`
 fn ser_err<T>(value: T)
 where
     T: Serialize,
@@ -44,6 +49,8 @@ where
     assert!(result.is_err());
 }
 
+// Serializes the `bytes`, then deserializes serialized result
+// and compares it to the `bytes` parameter.
 pub fn ser_de<'de, T>(bytes: &'de [u8])
 where
     T: Deserialize<'de> + Debug + PartialEq + Serialize,
@@ -67,6 +74,7 @@ where
     assert_eq!(result.unwrap(), compare);
 }
 
+// Asserts that the result of deserialization is an Err(_)
 pub fn de_err<'de, D>(bytes: &'de [u8])
 where
     D: Deserialize<'de> + Debug + PartialEq,
@@ -75,6 +83,8 @@ where
     assert!(result.is_err());
 }
 
+// Deserializes the value, then serializes the deserialized result
+// and compares it to the `value` parameter.
 pub fn de_ser<T>(value: T)
 where
     T: for<'de> Deserialize<'de> + Debug + PartialEq + Serialize,
