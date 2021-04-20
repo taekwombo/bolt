@@ -167,13 +167,3 @@ fn r#enum() {
         &bytes!([TINY_MAP + 1, TINY_STRING + 4], b"Var4".to_vec(), [10]),
     );
 }
-
-#[test]
-fn structure() {
-    use packstream_serde::value::structure::{AckFailure, BoltStructure, Structure};
-
-    ser(
-        Value::Structure(Structure::AckFailure(AckFailure)),
-        &[TINY_STRUCT, AckFailure::SIG],
-    );
-}

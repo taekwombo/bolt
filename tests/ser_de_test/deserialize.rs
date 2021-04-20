@@ -167,16 +167,6 @@ fn r#enum() {
 }
 
 #[test]
-fn structure() {
-    use packstream_serde::value::structure::{AckFailure, BoltStructure, Structure};
-
-    de(
-        &[TINY_STRUCT, AckFailure::SIG],
-        Value::Structure(Structure::AckFailure(AckFailure)),
-    );
-}
-
-#[test]
 fn skip_unknown() {
     let map_a = map! { "key1" => 0, "key2" => 1, "key3" => 2 };
     let bytes = to_bytes(&map_a).unwrap();

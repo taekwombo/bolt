@@ -54,20 +54,24 @@
 //! [7687.org]: https://7687.org/.
 //! [`Value`]: value::Value
 
+pub mod packstream;
+pub use packstream::{PackstreamStructure, EmptyPackstreamStructure};
+
 #[macro_use]
 mod macros;
 
 pub mod constants;
-mod de;
 pub mod error;
 pub mod marker;
 pub mod read;
-mod ser;
 pub mod value;
-
-#[doc(inline)]
-pub use de::from_bytes;
-#[doc(inline)]
-pub use ser::to_bytes;
 #[doc(inline)]
 pub use value::{from_value, to_value, Structure, Value, structure};
+
+mod de;
+#[doc(inline)]
+pub use de::from_bytes;
+
+mod ser;
+#[doc(inline)]
+pub use ser::to_bytes;
