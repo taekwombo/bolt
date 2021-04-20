@@ -1,8 +1,9 @@
-use super::{BoltStructure, Value};
+use super::super::Value;
 use super::{Node, UnboundRelationship};
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{structure, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::PackstreamStructure,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -17,8 +18,8 @@ pub struct Path {
     pub sequence: Vec<i64>,
 }
 
-impl BoltStructure for Path {
-    const SIG: u8 = 0x50;
+impl PackstreamStructure for Path {
+    const SIG: u8 = structure::PATH;
     const LEN: u8 = 0x03;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 

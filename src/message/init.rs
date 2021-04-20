@@ -1,7 +1,8 @@
-use super::{BoltStructure, Value};
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{message, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::PackstreamStructure,
+    Value,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -16,8 +17,8 @@ pub struct Init {
     pub auth: BasicAuth,
 }
 
-impl BoltStructure for Init {
-    const SIG: u8 = 0x01;
+impl PackstreamStructure for Init {
+    const SIG: u8 = message::INIT;
     const LEN: u8 = 0x02;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 

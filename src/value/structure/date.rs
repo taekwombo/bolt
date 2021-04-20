@@ -1,88 +1,83 @@
-use super::{BoltStructure, Value};
+use super::super::Value;
 use crate::{
     constants::STRUCTURE_NAME,
+    constants::structure,
     error::{PackstreamError, PackstreamResult},
+    packstream::{PackstreamStructure, Single},
 };
 use serde::{
     de, forward_to_deserialize_any,
     ser::{self, SerializeTupleStruct},
 };
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct Run {
-    pub statement: String,
-    pub parameters: HashMap<String, Value>,
+pub struct Date {
+    pub days: i64,
 }
 
-impl BoltStructure for Run {
-    const SIG: u8 = 0x10;
-    const LEN: u8 = 0x02;
+impl PackstreamStructure for Date {
+    const SIG: u8 = structure::DATE;
+    const LEN: u8 = 0x01;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = (String, HashMap<String, Value>);
+    type Fields = Single<i64>;
 
     fn into_value(self) -> Value {
         value_map! {
-            "statement" => Value::String(self.statement),
-            "parameters" => Value::Map(self.parameters),
+            "days" => Value::I64(self.days),
         }
     }
 }
 
-impl fmt::Display for Run {
+impl fmt::Display for Date {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Run")
-            .field("statement", &self.statement)
-            .field("parameters", &self.parameters)
+        f.debug_struct("Date")
+            .field("days", &self.days)
             .finish()
     }
 }
 
-impl<'a> ser::Serialize for Run {
+impl ser::Serialize for Date {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
-            serializer.serialize_tuple_struct(STRUCTURE_NAME, Run::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.statement)?;
-        ts_serializer.serialize_field(&self.parameters)?;
+            serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
+        ts_serializer.serialize_field(&self.days)?;
         ts_serializer.end()
     }
 }
 
-impl<'de> de::Deserialize<'de> for Run {
+impl<'de> de::Deserialize<'de> for Date {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_map(RunVisitor)
+        deserializer.deserialize_map(DateVisitor)
     }
 }
 
-struct RunVisitor;
+struct DateVisitor;
 
-impl<'de> de::Visitor<'de> for RunVisitor {
-    type Value = Run;
+impl<'de> de::Visitor<'de> for DateVisitor {
+    type Value = Date;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Run")
+        formatter.write_str("Date")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        let (statement, parameters) = structure_access!(map_access, Run);
-        Ok(Run {
-            statement,
-            parameters,
-        })
+        let days = structure_access!(map_access, Date);
+        Ok(Date { days: days.value() })
     }
 }
 
-impl<'de> de::Deserializer<'de> for Run {
+impl<'de> de::Deserializer<'de> for Date {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>

@@ -1,7 +1,8 @@
-use super::{BoltStructure, Value};
+use super::super::Value;
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{structure, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::PackstreamStructure,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -16,8 +17,8 @@ pub struct UnboundRelationship {
     pub properties: HashMap<String, Value>,
 }
 
-impl BoltStructure for UnboundRelationship {
-    const SIG: u8 = 0x72;
+impl PackstreamStructure for UnboundRelationship {
+    const SIG: u8 = structure::UNBOUND_RELATIONSHIP;
     const LEN: u8 = 0x03;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 

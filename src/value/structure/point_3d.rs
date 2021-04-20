@@ -1,7 +1,8 @@
-use super::{BoltStructure, Single, Value};
+use super::super::Value;
 use crate::{
-    constants::STRUCTURE_NAME,
+    constants::{structure, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
+    packstream::PackstreamStructure,
 };
 use serde::{
     de, forward_to_deserialize_any,
@@ -10,72 +11,89 @@ use serde::{
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
-pub struct Record {
-    pub fields: Vec<Value>,
+pub struct Point3D {
+    pub srid: i64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
-impl BoltStructure for Record {
-    const SIG: u8 = 0x71;
-    const LEN: u8 = 0x01;
+impl PackstreamStructure for Point3D {
+    const SIG: u8 = structure::POINT_3D;
+    const LEN: u8 = 0x04;
     const SERIALIZE_LEN: usize = serialize_length!(Self::SIG, Self::LEN);
 
-    type Fields = Single<Vec<Value>>;
+    type Fields = (i64, f64, f64, f64);
 
     fn into_value(self) -> Value {
         value_map! {
-            "fields" => Value::List(self.fields),
+            "srid" => Value::I64(self.srid),
+            "x" => Value::F64(self.x),
+            "y" => Value::F64(self.y),
+            "z" => Value::F64(self.z),
         }
     }
 }
 
-impl fmt::Display for Record {
+impl fmt::Display for Point3D {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Record").field(&self.fields).finish()
+        f.debug_struct("Point3D")
+            .field("srid", &self.srid)
+            .field("x", &self.x)
+            .field("y", &self.y)
+            .field("z", &self.z)
+            .finish()
     }
 }
 
-impl ser::Serialize for Record {
+impl ser::Serialize for Point3D {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
         let mut ts_serializer =
             serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.fields)?;
+        ts_serializer.serialize_field(&self.srid)?;
+        ts_serializer.serialize_field(&self.x)?;
+        ts_serializer.serialize_field(&self.y)?;
+        ts_serializer.serialize_field(&self.z)?;
         ts_serializer.end()
     }
 }
 
-impl<'de> de::Deserialize<'de> for Record {
+impl<'de> de::Deserialize<'de> for Point3D {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_map(RecordVisitor)
+        deserializer.deserialize_map(Point3DVisitor)
     }
 }
 
-struct RecordVisitor;
+struct Point3DVisitor;
 
-impl<'de> de::Visitor<'de> for RecordVisitor {
-    type Value = Record;
+impl<'de> de::Visitor<'de> for Point3DVisitor {
+    type Value = Point3D;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Record")
+        formatter.write_str("Point3D")
     }
 
     fn visit_map<V>(self, mut map_access: V) -> Result<Self::Value, V::Error>
     where
         V: de::MapAccess<'de>,
     {
-        let fields = structure_access!(map_access, Record);
-        Ok(Record {
-            fields: fields.value(),
+        let (srid, x, y, z) = structure_access!(map_access, Point3D);
+        Ok(Point3D {
+            srid,
+            x,
+            y,
+            z,
         })
     }
 }
 
-impl<'de> de::Deserializer<'de> for Record {
+impl<'de> de::Deserializer<'de> for Point3D {
     type Error = PackstreamError;
 
     fn deserialize_any<V>(self, visitor: V) -> PackstreamResult<V::Value>
@@ -91,3 +109,5 @@ impl<'de> de::Deserializer<'de> for Record {
         tuple_struct map struct identifier enum ignored_any
     }
 }
+
+

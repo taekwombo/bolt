@@ -1,65 +1,37 @@
-use serde::de::Error;
 use std::fmt;
+use crate::packstream::PackstreamStructure;
+use serde::de::Error;
 
 mod de;
 mod ser;
 
-mod ack_failure;
-mod discard_all;
-mod failure;
-mod fields;
-mod ignored;
-mod init;
 mod node;
 mod path;
-mod pull_all;
-mod record;
 mod relationship;
-mod reset;
-mod run;
-mod success;
 mod unbound_relationship;
+mod date;
+mod time;
+mod local_time;
+mod date_time;
+mod date_time_zone_id;
+mod local_date_time;
+mod duration;
+mod point_2d;
+mod point_3d;
 
-use super::Value;
-pub use ack_failure::AckFailure;
-pub use discard_all::DiscardAll;
-pub use failure::Failure;
-pub use fields::{Empty, Single};
-pub use ignored::Ignored;
-pub use init::{BasicAuth, Init};
 pub use node::Node;
 pub use path::Path;
-pub use pull_all::PullAll;
-pub use record::Record;
 pub use relationship::Relationship;
-pub use reset::Reset;
-pub use run::Run;
-pub use success::Success;
 pub use unbound_relationship::UnboundRelationship;
-
-pub trait BoltStructure {
-    const SIG: u8;
-    const LEN: u8;
-    const SERIALIZE_LEN: usize;
-
-    type Fields;
-
-    fn into_value(self) -> Value;
-
-    /// Checks whether two byte values, `marker` and `signature`
-    /// correspond to the specific type implementing this trait.
-    /// It's useful when there's a need to determine the type of
-    /// the structure without serializing it.
-    fn check_header (marker: u8, signature: u8) -> bool {
-        signature == Self::SIG && marker == Self::LEN + crate::constants::marker::TINY_STRUCT
-    }
-}
-
-pub trait EmptyBoltStructure: BoltStructure {
-  /// Represents serialized value of the BoltStructure
-  /// that carries no data.
-  const MSG: [u8; 2];
-}
+pub use date::Date;
+pub use time::Time;
+pub use local_time::LocalTime;
+pub use date_time::DateTime;
+pub use date_time_zone_id::DateTimeZoneId;
+pub use local_date_time::LocalDateTime;
+pub use duration::Duration;
+pub use point_2d::Point2D;
+pub use point_3d::Point3D;
 
 /// Represents any possible [`Bolt Structure`].
 ///
@@ -70,37 +42,35 @@ pub enum Structure {
     Path(Path),
     Relationship(Relationship),
     UnboundRelationship(UnboundRelationship),
-    AckFailure(AckFailure),
-    DiscardAll(DiscardAll),
-    Failure(Failure),
-    Ignored(Ignored),
-    Init(Init),
-    PullAll(PullAll),
-    Record(Record),
-    Reset(Reset),
-    Run(Run),
-    Success(Success),
+    Date(Date),
+    Time(Time),
+    LocalTime(LocalTime),
+    DateTime(DateTime),
+    DateTimeZoneId(DateTimeZoneId),
+    LocalDateTime(LocalDateTime),
+    Duration(Duration),
+    Point2D(Point2D),
+    Point3D(Point3D),
 }
 
 impl fmt::Debug for Structure {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-      match self {
-          Self::Node(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Path(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Relationship(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::UnboundRelationship(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::AckFailure(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::DiscardAll(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Failure(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Ignored(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Init(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::PullAll(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Record(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Reset(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Run(v) => f.debug_tuple("Structure").field(v).finish(),
-          Self::Success(v) => f.debug_tuple("Structure").field(v).finish(),
-      }
-  }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Node(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Path(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Relationship(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::UnboundRelationship(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Date(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Time(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::LocalTime(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::DateTime(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::DateTimeZoneId(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::LocalDateTime(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Duration(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Point2D(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Point3D(v) => f.debug_tuple("Structure").field(v).finish(),
+        }
+    }
 }
 
 impl fmt::Display for Structure {
@@ -110,16 +80,15 @@ impl fmt::Display for Structure {
             Self::Path(v) => f.debug_tuple("Structure").field(v).finish(),
             Self::Relationship(v) => f.debug_tuple("Structure").field(v).finish(),
             Self::UnboundRelationship(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::AckFailure(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::DiscardAll(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Failure(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Ignored(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Init(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::PullAll(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Record(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Reset(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Run(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Success(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Date(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Time(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::LocalTime(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::DateTime(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::DateTimeZoneId(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::LocalDateTime(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Duration(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Point2D(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Point3D(v) => f.debug_tuple("Structure").field(v).finish(),
         }
     }
 }
@@ -130,28 +99,6 @@ impl Structure {
         V: serde::de::MapAccess<'de>,
     {
         match map_access.next_value::<u8>()? {
-            AckFailure::SIG => {
-                structure_access!(map_access, AckFailure, no_sig_key);
-                Ok(Self::from(AckFailure))
-            }
-            DiscardAll::SIG => {
-                structure_access!(map_access, DiscardAll, no_sig_key);
-                Ok(Self::from(DiscardAll))
-            }
-            Failure::SIG => {
-                let fields = structure_access!(map_access, Failure, no_sig_key);
-                Ok(Self::from(Failure {
-                    metadata: fields.value(),
-                }))
-            }
-            Ignored::SIG => {
-                structure_access!(map_access, Ignored, no_sig_key);
-                Ok(Self::from(Ignored))
-            }
-            Init::SIG => {
-                let (client, auth) = structure_access!(map_access, Init, no_sig_key);
-                Ok(Self::from(Init { client, auth }))
-            }
             Node::SIG => {
                 let (identity, labels, properties) =
                     structure_access!(map_access, Node, no_sig_key);
@@ -170,16 +117,6 @@ impl Structure {
                     sequence,
                 }))
             }
-            PullAll::SIG => {
-                structure_access!(map_access, Path, no_sig_key);
-                Ok(Self::from(PullAll))
-            }
-            Record::SIG => {
-                let fields = structure_access!(map_access, Record, no_sig_key);
-                Ok(Self::from(Record {
-                    fields: fields.value(),
-                }))
-            }
             Relationship::SIG => {
                 let (identity, start_node_identity, end_node_identity, r#type, properties) =
                     structure_access!(map_access, Relationship, no_sig_key);
@@ -191,23 +128,6 @@ impl Structure {
                     properties,
                 }))
             }
-            Reset::SIG => {
-                structure_access!(map_access, Reset, no_sig_key);
-                Ok(Self::from(Reset))
-            }
-            Run::SIG => {
-                let (statement, parameters) = structure_access!(map_access, Run, no_sig_key);
-                Ok(Self::from(Run {
-                    statement,
-                    parameters,
-                }))
-            }
-            Success::SIG => {
-                let fields = structure_access!(map_access, Success, no_sig_key);
-                Ok(Self::from(Success {
-                    metadata: fields.value(),
-                }))
-            }
             UnboundRelationship::SIG => {
                 let (identity, r#type, properties) =
                     structure_access!(map_access, UnboundRelationship, no_sig_key);
@@ -215,6 +135,91 @@ impl Structure {
                     identity,
                     r#type,
                     properties,
+                }))
+            }
+            Date::SIG => {
+                let days = structure_access!(map_access, Date, no_sig_key);
+
+                Ok(Self::from(Date {
+                    days: days.value(),
+                }))
+            },
+            Time::SIG => {
+                let (nanoseconds, tz_offset_seconds) = structure_access!(map_access, Time, no_sig_key);
+
+                Ok(Self::from(Time {
+                    nanoseconds,
+                    tz_offset_seconds,
+                }))
+            },
+            LocalTime::SIG => {
+                let nanoseconds = structure_access!(map_access, LocalTime, no_sig_key);
+
+                Ok(Self::from(LocalTime {
+                    nanoseconds: nanoseconds.value()
+                }))
+            }
+            DateTime::SIG => {
+                let (seconds, nanoseconds, tz_offset_seconds) = structure_access!(
+                    map_access,
+                    DateTime,
+                    no_sig_key
+                );
+
+                Ok(Self::from(DateTime {
+                    seconds,
+                    nanoseconds,
+                    tz_offset_seconds,
+                }))
+            }
+            DateTimeZoneId::SIG => {
+                let (seconds, nanoseconds, tz_id) = structure_access!(
+                    map_access,
+                    DateTimeZoneId,
+                    no_sig_key
+                );
+
+                Ok(Self::from(DateTimeZoneId {
+                    seconds,
+                    nanoseconds,
+                    tz_id,
+                }))
+            }
+            LocalDateTime::SIG => {
+                let (seconds, nanoseconds) = structure_access!(map_access, LocalDateTime, no_sig_key);
+
+                Ok(Self::from(LocalDateTime {
+                    seconds,
+                    nanoseconds,
+                }))
+            }
+            Duration::SIG => {
+                let (months, days, seconds, nanoseconds) = structure_access!(map_access, Duration, no_sig_key);
+
+                Ok(Self::from(Duration {
+                    months,
+                    days,
+                    seconds,
+                    nanoseconds,
+                }))
+            }
+            Point2D::SIG => {
+                let (srid, x, y) = structure_access!(map_access, Point2D, no_sig_key);
+
+                Ok(Self::from(Point2D {
+                    srid,
+                    x,
+                    y,
+                }))
+            }
+            Point3D::SIG => {
+                let (srid, x, y, z) = structure_access!(map_access, Point3D, no_sig_key);
+
+                Ok(Self::from(Point3D {
+                    srid,
+                    x,
+                    y,
+                    z,
                 }))
             }
             signature => Err(V::Error::custom(format!(
@@ -249,62 +254,56 @@ impl From<UnboundRelationship> for Structure {
     }
 }
 
-impl From<AckFailure> for Structure {
-    fn from(value: AckFailure) -> Self {
-        Self::AckFailure(value)
+impl From<Date> for Structure {
+    fn from(value: Date) -> Self {
+        Self::Date(value)
     }
 }
 
-impl From<DiscardAll> for Structure {
-    fn from(value: DiscardAll) -> Self {
-        Self::DiscardAll(value)
+impl From<Time> for Structure {
+    fn from(value: Time) -> Self {
+        Self::Time(value)
     }
 }
 
-impl From<Failure> for Structure {
-    fn from(value: Failure) -> Self {
-        Self::Failure(value)
+impl From<LocalTime> for Structure {
+    fn from(value: LocalTime) -> Self {
+        Self::LocalTime(value)
     }
 }
 
-impl From<Ignored> for Structure {
-    fn from(value: Ignored) -> Self {
-        Self::Ignored(value)
+impl From<DateTime> for Structure {
+    fn from(value: DateTime) -> Self {
+        Self::DateTime(value)
     }
 }
 
-impl From<Init> for Structure {
-    fn from(value: Init) -> Self {
-        Self::Init(value)
+impl From<DateTimeZoneId> for Structure {
+    fn from(value: DateTimeZoneId) -> Self {
+        Self::DateTimeZoneId(value)
     }
 }
 
-impl From<PullAll> for Structure {
-    fn from(value: PullAll) -> Self {
-        Self::PullAll(value)
+impl From<LocalDateTime> for Structure {
+    fn from(value: LocalDateTime) -> Self {
+        Self::LocalDateTime(value)
     }
 }
 
-impl From<Record> for Structure {
-    fn from(value: Record) -> Self {
-        Self::Record(value)
+impl From<Duration> for Structure {
+    fn from(value: Duration) -> Self {
+        Self::Duration(value)
     }
 }
 
-impl From<Reset> for Structure {
-    fn from(value: Reset) -> Self {
-        Self::Reset(value)
+impl From<Point2D> for Structure {
+    fn from(value: Point2D) -> Self {
+        Self::Point2D(value)
     }
 }
 
-impl From<Run> for Structure {
-    fn from(value: Run) -> Self {
-        Self::Run(value)
-    }
-}
-
-impl From<Success> for Structure {
-    fn from(value: Success) -> Self {
-        Self::Success(value)
+impl From<Point3D> for Structure {
+    fn from(value: Point3D) -> Self {
+        Self::Point3D(value)
     }
 }
