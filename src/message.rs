@@ -1,3 +1,7 @@
+//!  # Bolt Message Structures
+//!  [List of Bolt Messages](https://7687.org/bolt/bolt-protocol-message-specification-1.html#messages)
+//!
+
 use std::fmt;
 use crate::packstream::PackstreamStructure;
 use serde::de::Error;
@@ -27,9 +31,7 @@ pub use record::Record;
 mod ser;
 mod de;
 
-/// Represents a request message (see: [`Bolt Message`]).
-///
-/// [`Bolt Message`]: https://7687.org/bolt/bolt-protocol-message-specification-1.html#messages
+/// Represents request message.
 #[derive(PartialEq)]
 pub enum RequestMessage {
     Init(Init),
@@ -41,7 +43,6 @@ pub enum RequestMessage {
 }
 
 impl RequestMessage {
-    // Sig key was consumed already
     pub(crate) fn from_map_access_no_sig_key<'de, V>(map_access: &mut V) -> Result<Self, V::Error>
     where
         V: serde::de::MapAccess<'de>,
@@ -143,9 +144,7 @@ impl From<PullAll> for RequestMessage {
     }
 }
 
-/// Represents a summary message (see: [`Bolt Message`]).
-///
-/// [`Bolt Message`]: https://7687.org/bolt/bolt-protocol-message-specification-1.html#messages
+/// Represents summary message.
 #[derive(PartialEq)]
 pub enum SummaryMessage {
     Success(Success),
