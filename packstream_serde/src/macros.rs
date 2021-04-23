@@ -57,13 +57,13 @@ macro_rules! unexpected_key_access {
         return Err(<V::Error as ::serde::de::Error>::custom(format!(
             "Expected key '{}', got '{}' instead.",
             $expected, $key,
-        )));
+        )))
     };
     ($expected:path) => {
         return Err(<V::Error as ::serde::de::Error>::custom(format!(
             "Expected key '{}', got None instead.",
             $expected,
-        )));
+        )))
     };
 }
 
