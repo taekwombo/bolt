@@ -1,5 +1,6 @@
 mod de;
 mod ser;
+mod display;
 pub mod structure;
 pub use de::from_value;
 pub use ser::to_value;
@@ -29,15 +30,15 @@ pub enum Value {
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Null => f.debug_tuple("Null").finish(),
-            Self::Bool(v) => f.debug_tuple("Bool").field(v).finish(),
-            Self::I64(v) => f.debug_tuple("I64").field(v).finish(),
-            Self::F64(v) => f.debug_tuple("F64").field(v).finish(),
-            Self::String(v) => f.debug_tuple("String").field(v).finish(),
-            Self::List(v) => f.debug_tuple("List").field(v).finish(),
-            Self::Map(v) => f.debug_tuple("Map").field(v).finish(),
-            Self::Bytes(v) => f.debug_tuple("Bytes").field(v).finish(),
-            Self::Structure(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Null => f.debug_tuple("Value::Null").finish(),
+            Self::Bool(v) => f.debug_tuple("Value::Bool").field(v).finish(),
+            Self::I64(v) => f.debug_tuple("Value::I64").field(v).finish(),
+            Self::F64(v) => f.debug_tuple("Value::F64").field(v).finish(),
+            Self::String(v) => f.debug_tuple("Value::String").field(v).finish(),
+            Self::List(v) => f.debug_tuple("Value::List").field(v).finish(),
+            Self::Map(v) => f.debug_tuple("Value::Map").field(v).finish(),
+            Self::Bytes(v) => f.debug_tuple("Value::Bytes").field(v).finish(),
+            Self::Structure(v) => f.debug_tuple("Value::Structure").field(v).finish(),
         }
     }
 }
@@ -46,14 +47,14 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Null => f.debug_tuple("Null").finish(),
-            Self::Bool(v) => f.debug_tuple("Bool").field(v).finish(),
-            Self::I64(v) => f.debug_tuple("I64").field(v).finish(),
-            Self::F64(v) => f.debug_tuple("F64").field(v).finish(),
-            Self::String(v) => f.debug_tuple("String").field(v).finish(),
-            Self::List(v) => f.debug_tuple("List").field(v).finish(),
-            Self::Map(v) => f.debug_tuple("Map").field(v).finish(),
-            Self::Bytes(v) => f.debug_tuple("Bytes").field(v).finish(),
-            Self::Structure(v) => v.fmt(f),
+            Self::Bool(v) => fmt::Display::fmt(v, f),
+            Self::I64(v) => fmt::Display::fmt(v, f),
+            Self::F64(v) => fmt::Display::fmt(v, f),
+            Self::String(v) => fmt::Display::fmt(v, f),
+            Self::List(v) => display::display_value_list(v, f),
+            Self::Map(v) => display::display_value_hash_map(v, f),
+            Self::Bytes(v) => f.debug_list().entries(v.iter()).finish(),
+            Self::Structure(v) => fmt::Display::fmt(v, f),
         }
     }
 }

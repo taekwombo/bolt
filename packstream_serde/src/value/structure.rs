@@ -76,19 +76,19 @@ impl fmt::Debug for Structure {
 impl fmt::Display for Structure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Node(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Path(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Relationship(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::UnboundRelationship(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Date(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Time(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::LocalTime(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::DateTime(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::DateTimeZoneId(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::LocalDateTime(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Duration(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Point2D(v) => f.debug_tuple("Structure").field(v).finish(),
-            Self::Point3D(v) => f.debug_tuple("Structure").field(v).finish(),
+            Self::Node(v) => fmt::Display::fmt(v, f),
+            Self::Path(v) => fmt::Display::fmt(v, f),
+            Self::Relationship(v) => fmt::Display::fmt(v, f),
+            Self::UnboundRelationship(v) => fmt::Display::fmt(v, f),
+            Self::Date(v) => fmt::Display::fmt(v, f),
+            Self::Time(v) => fmt::Display::fmt(v, f),
+            Self::LocalTime(v) => fmt::Display::fmt(v, f),
+            Self::DateTime(v) => fmt::Display::fmt(v, f),
+            Self::DateTimeZoneId(v) => fmt::Display::fmt(v, f),
+            Self::LocalDateTime(v) => fmt::Display::fmt(v, f),
+            Self::Duration(v) => fmt::Display::fmt(v, f),
+            Self::Point2D(v) => fmt::Display::fmt(v, f),
+            Self::Point3D(v) => fmt::Display::fmt(v, f),
         }
     }
 }
@@ -100,10 +100,10 @@ impl Structure {
     {
         match map_access.next_value::<u8>()? {
             Node::SIG => {
-                let (identity, labels, properties) =
+                let (id, labels, properties) =
                     structure_access!(map_access, Node, no_sig_key);
                 Ok(Self::from(Node {
-                    identity,
+                    id,
                     labels,
                     properties,
                 }))
@@ -118,21 +118,21 @@ impl Structure {
                 }))
             }
             Relationship::SIG => {
-                let (identity, start_node_identity, end_node_identity, r#type, properties) =
+                let (id, start_node_id, end_node_id, r#type, properties) =
                     structure_access!(map_access, Relationship, no_sig_key);
                 Ok(Self::from(Relationship {
-                    identity,
-                    start_node_identity,
-                    end_node_identity,
+                    id,
+                    start_node_id,
+                    end_node_id,
                     r#type,
                     properties,
                 }))
             }
             UnboundRelationship::SIG => {
-                let (identity, r#type, properties) =
+                let (id, r#type, properties) =
                     structure_access!(map_access, UnboundRelationship, no_sig_key);
                 Ok(Self::from(UnboundRelationship {
-                    identity,
+                    id,
                     r#type,
                     properties,
                 }))
