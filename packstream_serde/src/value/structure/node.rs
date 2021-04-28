@@ -1,4 +1,5 @@
 use super::super::Value;
+use super::super::display;
 use crate::{
     constants::{structure, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
@@ -35,11 +36,14 @@ impl PackstreamStructure for Node {
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Node")
-            .field("identity", &self.identity)
-            .field("labels", &self.labels)
-            .field("properties", &self.properties)
-            .finish()
+        f.write_str("(")?;
+
+        for label in &self.labels {
+            f.write_str(&format!(":{} ", label))?;
+        }
+
+        display::display_value_hash_map(&self.properties, f)?;
+        f.write_str(")")
     }
 }
 

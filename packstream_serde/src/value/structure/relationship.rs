@@ -1,4 +1,5 @@
 use super::super::Value;
+use super::super::display;
 use crate::{
     constants::{structure, STRUCTURE_NAME},
     error::{PackstreamError, PackstreamResult},
@@ -39,13 +40,11 @@ impl PackstreamStructure for Relationship {
 
 impl fmt::Display for Relationship {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Relationship")
-            .field("id", &self.id)
-            .field("start_node_id", &self.start_node_id)
-            .field("end_node_id", &self.end_node_id)
-            .field("type", &self.r#type)
-            .field("properties", &self.properties)
-            .finish()
+        f.write_fmt(format_args!("[:{} ", self.r#type))?;
+
+        display::display_value_hash_map(&self.properties, f)?;
+        
+        f.write_str("]")
     }
 }
 
