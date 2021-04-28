@@ -12,17 +12,17 @@ fn node() {
     ser_de::<Value>(BYTES);
 
     de_ser(Node {
-        identity: 0,
+        id: 0,
         labels: Vec::new(),
         properties: HashMap::new(),
     });
     de_ser(Structure::Node(Node {
-        identity: 0,
+        id: 0,
         labels: Vec::new(),
         properties: HashMap::new(),
     }));
     de_ser(Value::Structure(Structure::Node(Node {
-        identity: 0,
+        id: 0,
         labels: Vec::new(),
         properties: HashMap::new(),
     })));
@@ -80,23 +80,23 @@ fn relationship() {
     ser_de::<Value>(BYTES);
 
     de_ser(Relationship {
-        identity: 0,
-        start_node_identity: 0,
-        end_node_identity: 0,
+        id: 0,
+        start_node_id: 0,
+        end_node_id: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     });
     de_ser(Structure::Relationship(Relationship {
-        identity: 0,
-        start_node_identity: 0,
-        end_node_identity: 0,
+        id: 0,
+        start_node_id: 0,
+        end_node_id: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     }));
     de_ser(Value::Structure(Structure::Relationship(Relationship {
-        identity: 0,
-        start_node_identity: 0,
-        end_node_identity: 0,
+        id: 0,
+        start_node_id: 0,
+        end_node_id: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     })));
@@ -119,17 +119,17 @@ fn unbound_relationship() {
     ser_de::<Value>(BYTES);
 
     de_ser(UnboundRelationship {
-        identity: 0,
+        id: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     });
     de_ser(Structure::UnboundRelationship(UnboundRelationship {
-        identity: 0,
+        id: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     }));
     de_ser(Value::Structure(Structure::UnboundRelationship(UnboundRelationship {
-        identity: 0,
+        id: 0,
         r#type: String::new(),
         properties: HashMap::new(),
     })));
