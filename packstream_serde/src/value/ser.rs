@@ -82,8 +82,6 @@ impl ser::Serializer for Serializer {
     }
 
     fn serialize_u64(self, value: u64) -> PackstreamResult<Self::Ok> {
-        use std::convert::TryFrom;
-
         let val_int = i64::try_from(value).map_err(|_| {
             PackstreamError::create(format!("Attempt to convert {}u64 into i63 failed", value))
         })?;
