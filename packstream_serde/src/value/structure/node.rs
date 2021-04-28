@@ -12,7 +12,7 @@ use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct Node {
-    pub identity: i64,
+    pub id: i64,
     pub labels: Vec<String>,
     pub properties: HashMap<String, Value>,
 }
@@ -26,7 +26,7 @@ impl PackstreamStructure for Node {
 
     fn into_value(self) -> Value {
         value_map! {
-            "identity" => Value::I64(self.identity),
+            "id" => Value::I64(self.id),
             "labels" => Value::List(self.labels.into_iter().map(Value::String).collect()),
             "properties" => Value::Map(self.properties),
         }
@@ -50,7 +50,7 @@ impl ser::Serialize for Node {
     {
         let mut ts_serializer =
             serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.identity)?;
+        ts_serializer.serialize_field(&self.id)?;
         ts_serializer.serialize_field(&self.labels)?;
         ts_serializer.serialize_field(&self.properties)?;
         ts_serializer.end()
@@ -79,9 +79,9 @@ impl<'de> de::Visitor<'de> for NodeVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let (identity, labels, properties) = structure_access!(map_access, Node);
+        let (id, labels, properties) = structure_access!(map_access, Node);
         Ok(Node {
-            identity,
+            id,
             labels,
             properties,
         })

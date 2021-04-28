@@ -12,9 +12,9 @@ use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct Relationship {
-    pub identity: i64,
-    pub start_node_identity: i64,
-    pub end_node_identity: i64,
+    pub id: i64,
+    pub start_node_id: i64,
+    pub end_node_id: i64,
     pub r#type: String,
     pub properties: HashMap<String, Value>,
 }
@@ -28,9 +28,9 @@ impl PackstreamStructure for Relationship {
 
     fn into_value(self) -> Value {
         value_map! {
-            "identity" => Value::I64(self.identity),
-            "start_node_identity" => Value::I64(self.start_node_identity),
-            "end_node_identity" => Value::I64(self.end_node_identity),
+            "id" => Value::I64(self.id),
+            "start_node_id" => Value::I64(self.start_node_id),
+            "end_node_id" => Value::I64(self.end_node_id),
             "type" => Value::String(self.r#type),
             "properties" => Value::Map(self.properties),
         }
@@ -40,9 +40,9 @@ impl PackstreamStructure for Relationship {
 impl fmt::Display for Relationship {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Relationship")
-            .field("identity", &self.identity)
-            .field("start_node_identity", &self.start_node_identity)
-            .field("end_node_identity", &self.end_node_identity)
+            .field("id", &self.id)
+            .field("start_node_id", &self.start_node_id)
+            .field("end_node_id", &self.end_node_id)
             .field("type", &self.r#type)
             .field("properties", &self.properties)
             .finish()
@@ -56,9 +56,9 @@ impl ser::Serialize for Relationship {
     {
         let mut ts_serializer =
             serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.identity)?;
-        ts_serializer.serialize_field(&self.start_node_identity)?;
-        ts_serializer.serialize_field(&self.end_node_identity)?;
+        ts_serializer.serialize_field(&self.id)?;
+        ts_serializer.serialize_field(&self.start_node_id)?;
+        ts_serializer.serialize_field(&self.end_node_id)?;
         ts_serializer.serialize_field(&self.r#type)?;
         ts_serializer.serialize_field(&self.properties)?;
         ts_serializer.end()
@@ -87,13 +87,13 @@ impl<'de> de::Visitor<'de> for RelationshipVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let (identity, start_node_identity, end_node_identity, r#type, properties) =
+        let (id, start_node_id, end_node_id, r#type, properties) =
             structure_access!(map_access, Relationship);
 
         Ok(Relationship {
-            identity,
-            start_node_identity,
-            end_node_identity,
+            id,
+            start_node_id,
+            end_node_id,
             r#type,
             properties,
         })

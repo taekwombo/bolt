@@ -12,7 +12,7 @@ use std::{collections::HashMap, fmt};
 
 #[derive(Debug, PartialEq)]
 pub struct UnboundRelationship {
-    pub identity: i64,
+    pub id: i64,
     pub r#type: String,
     pub properties: HashMap<String, Value>,
 }
@@ -26,7 +26,7 @@ impl PackstreamStructure for UnboundRelationship {
 
     fn into_value(self) -> Value {
         value_map! {
-            "identity" => Value::I64(self.identity),
+            "id" => Value::I64(self.id),
             "type" => Value::String(self.r#type),
             "properties" => Value::Map(self.properties),
         }
@@ -36,7 +36,7 @@ impl PackstreamStructure for UnboundRelationship {
 impl fmt::Display for UnboundRelationship {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("UnboundRelationship")
-            .field("identity", &self.identity)
+            .field("id", &self.id)
             .field("type", &self.r#type)
             .field("properties", &self.properties)
             .finish()
@@ -50,7 +50,7 @@ impl ser::Serialize for UnboundRelationship {
     {
         let mut ts_serializer =
             serializer.serialize_tuple_struct(STRUCTURE_NAME, Self::SERIALIZE_LEN)?;
-        ts_serializer.serialize_field(&self.identity)?;
+        ts_serializer.serialize_field(&self.id)?;
         ts_serializer.serialize_field(&self.r#type)?;
         ts_serializer.serialize_field(&self.properties)?;
         ts_serializer.end()
@@ -79,9 +79,9 @@ impl<'de> de::Visitor<'de> for UnboundRelationshipVisitor {
     where
         V: de::MapAccess<'de>,
     {
-        let (identity, r#type, properties) = structure_access!(map_access, UnboundRelationship);
+        let (id, r#type, properties) = structure_access!(map_access, UnboundRelationship);
         Ok(UnboundRelationship {
-            identity,
+            id,
             r#type,
             properties,
         })
