@@ -1,0 +1,17 @@
+[package]
+name = "bolt"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+packstream_serde = { path = "../packstream_serde" }
+serde = { version = "1.0.105" }
+serde_derive = { version = "1.0.105" }
+bytes = { version = "0.5.4" }
+semver = { version = "0.10.0" }
+log = { version = "0.4.11" }
+async-net = { version = "0.1.2" }
+smol = { version = "1.0.1" }
+futures-lite = { version = "0.1.11" }
