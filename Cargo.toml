@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "packstream_serde",
+    "bolt",
+    "boo",
+]

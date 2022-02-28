@@ -1,0 +1,11 @@
+[package]
+name = "boo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+smol = { version = "1.0.1" }
+termion = { version = "1.5.6" }
+bolt = { path = "../bolt" }
+packstream_serde = { path = "../packstream_serde" }
+comfy-table = { version = "5.0.0" }
