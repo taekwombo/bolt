@@ -9,3 +9,6 @@ termion = { version = "1.5.6" }
 bolt = { path = "../bolt" }
 packstream_serde = { path = "../packstream_serde" }
 comfy-table = { version = "5.0.0" }
+tree-sitter = { version = "0.20.5" }
+tree-sitter-highlight = { version = "0.20.1" }
+tree-sitter-cypher = { git = "https://github.com/taekwombo/tree-sitter-cypher.git" }

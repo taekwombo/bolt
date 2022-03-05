@@ -2,6 +2,7 @@ mod command;
 mod mode;
 mod print_query;
 mod textarea;
+mod highlighter;
 
 use textarea::TextArea;
 use print_query::{print_query_response, print_query_error};
