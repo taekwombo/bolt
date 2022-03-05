@@ -21,7 +21,7 @@ impl<'a> Chunks<'a> {
         Self { width, source_length: 0, chunks: Vec::new() }
     }
 
-    pub fn push<'s>(&'s mut self, chunk: Chunk<'a>) -> &'s mut Self {
+    pub fn push(&mut self, chunk: Chunk<'a>) -> &mut Self {
         let chunk_length: usize = chunk.source_len();
         let width = self.width as usize;
         let current_line_count = self.source_length / width;
@@ -44,7 +44,7 @@ impl<'a> Chunks<'a> {
         self
     }
 
-    pub fn get_lines<'s>(&'s self) -> Vec<String> {
+    pub fn get_lines(&self) -> Vec<String> {
         let mut lines = Vec::new();
 
         let mut line = String::new();
@@ -96,11 +96,11 @@ impl<'a> Chunk<'a> {
         Self { source_code: "", is_new_line: true, style: "" }
     }
 
-    fn source_len<'s>(&'s self) -> usize {
+    fn source_len(&self) -> usize {
         self.source_code.len()
     }
 
-    fn append_to_line<'s: 'a>(&'s self, line: &mut String) -> () {
+    fn append_to_line(&self, line: &mut String) -> () {
         line.push_str(self.style);
         line.push_str(self.source_code);
     }
