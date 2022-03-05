@@ -1,9 +1,11 @@
 use super::command::Command;
+use super::highlighter::QueryHighlighter;
 
 pub struct TextArea {
     pub width: u16,
     pub height: u16,
     pub command: Command,
+    highlighter: QueryHighlighter,
 }
 
 impl TextArea {
@@ -13,6 +15,7 @@ impl TextArea {
         Self {
             width,
             height,
+            highlighter: QueryHighlighter::new(),
             command: Command::new(),
         }
     }
@@ -25,11 +28,12 @@ impl TextArea {
         self.print();
     }
 
-    pub fn print(&self) -> () {
-        let lines = self.command.get_lines(self.width);
+    pub fn print(&mut self) -> () {
+        let query = self.command.get_buffer().as_str();
+        let chunks = self.highlighter.parse(query, self.width);
 
         let mut first = true;
-        for line in lines {
+        for line in chunks.get_lines() {
             if first {
                 first = false;
                 print!("> {}", line);
