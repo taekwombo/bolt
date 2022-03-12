@@ -247,7 +247,6 @@ fn main() -> Result<(), io::Error> {
                         },
                     }
 
-                    text_area.print();
                     stdout.flush()?;
                 },
                 Key::Ctrl('h') => {
