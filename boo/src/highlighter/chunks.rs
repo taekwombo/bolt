@@ -80,11 +80,10 @@ impl<'a> Chunk<'a> {
     /// Splits chunk at `index` into two exactly styled chunks.
     fn split(self, index: usize) -> (Self, Self) {
         let (left, right) = self.source_code.split_at(index);
-        let style = self.style;
 
         (
-            Self { style, source_code: left, is_new_line: false, },
-            Self { style, source_code: right, is_new_line: false, },
+            Self { style: self.style, source_code: left, is_new_line: false, },
+            Self { style: "", source_code: right, is_new_line: false, },
         )
     }
 
