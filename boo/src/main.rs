@@ -14,6 +14,9 @@ use termion::input::TermRead;
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 
+// Fix: tab breaks counting of chars and lines.
+// Fix: line breaks are not working.
+
 pub struct LastResponse {
     pub size: usize,
     pub index: usize,
