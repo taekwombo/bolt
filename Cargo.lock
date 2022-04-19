@@ -764,6 +764,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-cypher"
 version = "0.0.1"
+source = "git+https://github.com/taekwombo/tree-sitter-cypher.git#672718f56462523900a9391a649d1e175f914653"
 dependencies = [
  "cc",
  "tree-sitter",
