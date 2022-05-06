@@ -247,6 +247,7 @@ fn main() -> Result<(), io::Error> {
                         },
                         Err(error) => {
                             stdout.write(print_query_error(width, error).as_bytes())?;
+                            text_area.print();
                         },
                     }
 
