@@ -22,24 +22,34 @@ impl<'a> Chunks<'a> {
     }
 
     pub fn push(&mut self, chunk: Chunk<'a>) -> &mut Self {
-        let chunk_length: usize = chunk.source_len();
         let width = self.width as usize;
-        let current_line_count = self.source_length / width;
-        let next_line_count = (chunk_length + self.source_length) / width;
+        let previous_new_line = self.chunks.last().map_or(false, |c| c.is_new_line);
+        let occupied_space = if previous_new_line { 0 } else { self.source_length };
+        let space_left = width - (occupied_space % width);
 
-        if next_line_count > current_line_count {
-            // Split chunk in two so that the line is filled but not wrapped by the terminal.
-            let (left, right) = chunk.split(
-                (self.source_length + chunk_length) % width
-            );
-
-            self.chunks.push(left);
-            self.chunks.push(right);
-        } else {
+        if chunk.source_len() <= space_left {
+            self.source_length += chunk.source_len();
             self.chunks.push(chunk);
-        }
+        } else {
+            let mut pushed = 0;
+            let mut chunk_to_split = chunk;
 
-        self.source_length += chunk_length;
+            loop {
+                let space_left_split = usize::min(width - ((occupied_space + pushed) % width), chunk_to_split.source_len());
+                let (left, right) = chunk_to_split.split_at(space_left_split);
+
+                pushed += left.source_len();
+                self.chunks.push(left);
+
+                if right.source_len() == 0 {
+                    break;
+                }
+
+                chunk_to_split = right;
+            }
+
+            self.source_length += pushed;
+        }
 
         self
     }
@@ -78,7 +88,7 @@ impl<'a> Chunks<'a> {
 
 impl<'a> Chunk<'a> {
     /// Splits chunk at `index` into two exactly styled chunks.
-    fn split(self, index: usize) -> (Self, Self) {
+    fn split_at(self, index: usize) -> (Self, Self) {
         let (left, right) = self.source_code.split_at(index);
 
         (

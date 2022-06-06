@@ -30,7 +30,7 @@ impl TextArea {
 
     pub fn print(&mut self) -> () {
         let query = self.command.get_buffer().as_str();
-        let chunks = self.highlighter.parse(query, self.width);
+        let chunks = self.highlighter.parse(query, self.width - 2);
 
         let mut first = true;
         for line in chunks.get_lines() {
@@ -43,11 +43,15 @@ impl TextArea {
         }
     }
 
-    pub fn clear(&self) -> () {
-        let line_count = self.command.get_lines(self.width).len() - 1;
+    pub fn clear(&mut self) -> () {
+        let query = self.command.get_buffer().as_str();
+        let chunks = self.highlighter.parse(query, self.width - 2);
+        let lines = chunks.get_lines().len();
 
-        if line_count > 0 {
-            print!("{}", termion::scroll::Down(line_count as u16));
+        // If there is more than 1 visual line, then scroll cursor.
+        if lines > 1 {
+            // Scroll `lines` minus 1 - there is no need to scroll the cursor line.
+            print!("{}", termion::scroll::Down((lines - 1) as u16));
         }
 
         print!("{}{}", termion::cursor::Goto(1, self.height), termion::clear::AfterCursor);
