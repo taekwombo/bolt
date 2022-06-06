@@ -71,23 +71,4 @@ impl Command {
             },
         }
     }
-
-    pub fn get_lines<'a>(&'a self, width: u16) -> Vec<&'a str> {
-        let line_iterator = self.buffer.split('\n');
-        let mut lines: Vec<&str> = Vec::with_capacity(line_iterator.size_hint().0);
-
-        for line in line_iterator {
-            if line.len() > width as usize {
-                let splits = line.len() / width as usize;
-
-                for idx in 0..splits {
-                    lines.push(&line[(idx * width as usize)..((idx + 1) * width as usize)]);
-                }
-            } else {
-                lines.push(line);
-            }
-        }
-
-        lines
-    }
 }
