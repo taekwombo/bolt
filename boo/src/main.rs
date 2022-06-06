@@ -110,7 +110,9 @@ static HELP_TEXT: &'static str = help_str!(
 fn main() -> Result<(), io::Error> {
     let mut stdin = io::stdin();
     let mut stdout = io::stdout();
-    let (width, _) = termion::terminal_size()?;
+    let (width, height) = termion::terminal_size()?;
+    // One line of padding, one line of summary, 3 lines for header and two lines for each row.
+    let max_result_count = if height < 5 { 1 } else { ((height as usize - 5) / 2).max(1) };
 
     let mut client = match connect_to_server(&mut stdin, &mut stdout) {
         Ok(c) => c,
@@ -161,9 +163,9 @@ fn main() -> Result<(), io::Error> {
             }
 
             let result = last_response.as_mut().unwrap();
-            stdout.write(print_query_response(width, &result).as_bytes())?;
+            stdout.write(print_query_response(width, &result, max_result_count).as_bytes())?;
 
-            if result.size <= 20 {
+            if result.size <= max_result_count {
                 mode = Mode::Statement;
 
                 text_area.print();
@@ -174,7 +176,7 @@ fn main() -> Result<(), io::Error> {
             stdout.write(format!(
                 "Results {}-{} of {}. Use <C-n> <C-p> to scroll.\r\n",
                 result.index,
-                (result.index + 20).min(result.size),
+                (result.index + max_result_count).min(result.size),
                 result.size,
             ).as_bytes())?;
 
@@ -187,10 +189,10 @@ fn main() -> Result<(), io::Error> {
                             continue;
                         }
 
-                        result.index = result.index.saturating_sub(20);
+                        result.index = result.index.saturating_sub(max_result_count);
                     },
                     Key::Ctrl('n') => {
-                        let next = result.index + 20;
+                        let next = result.index + max_result_count;
 
                         if next >= result.size {
                             continue;

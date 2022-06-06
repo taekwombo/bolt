@@ -12,8 +12,8 @@ pub fn print_query_error(width: u16, error: BoltError) -> String {
     return output;
 }
 
-pub fn print_query_response(width: u16, result: &LastResponse) -> String {
-    let table = match get_result_table(width, result) {
+pub fn print_query_response(width: u16, result: &LastResponse, page_size: usize) -> String {
+    let table = match get_result_table(width, result, page_size) {
         Some(t) => t,
         None => return String::from("\r\nEmpty response\r\n"),
     };
@@ -26,7 +26,7 @@ pub fn print_query_response(width: u16, result: &LastResponse) -> String {
     return output;
 }
 
-fn get_result_table(width: u16, result: &LastResponse) -> Option<Table> {
+fn get_result_table(width: u16, result: &LastResponse, page_size: usize) -> Option<Table> {
     if result.size == 0 {
         return None;
     }
@@ -51,7 +51,7 @@ fn get_result_table(width: u16, result: &LastResponse) -> Option<Table> {
         })
     );
 
-    for (index, result_row) in response.rows().iter().skip(result.index).take(20).enumerate() {
+    for (index, result_row) in response.rows().iter().skip(result.index).take(page_size).enumerate() {
         let mut row = Row::new();
         row.add_cell(Cell::new(format!("{}", index + result.index)));
 
