@@ -112,7 +112,7 @@ fn main() -> Result<(), io::Error> {
     let mut stdout = io::stdout();
     let (width, height) = termion::terminal_size()?;
     // One line of padding, one line of summary, 3 lines for header and two lines for each row.
-    let max_result_count = if height < 5 { 1 } else { ((height as usize - 5) / 2).max(1) };
+    let max_result_count = ((height as usize).saturating_sub(5) / 2).max(1);
 
     let mut client = match connect_to_server(&mut stdin, &mut stdout) {
         Ok(c) => c,
