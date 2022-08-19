@@ -174,10 +174,10 @@ fn main() -> Result<(), io::Error> {
             }
 
             stdout.write(format!(
-                "Results {}-{} of {}. Use <C-n> <C-p> to scroll.\r\n",
+                "Records {}-{}/{}. Use <C-n> <C-p> to scroll.\r\n",
                 result.index,
-                (result.index + max_result_count).min(result.size),
-                result.size,
+                (result.index + max_result_count - 1).min(result.size - 1),
+                result.size - 1,
             ).as_bytes())?;
 
             stdout.flush()?;
