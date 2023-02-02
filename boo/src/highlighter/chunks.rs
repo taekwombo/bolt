@@ -115,42 +115,39 @@ impl<'a> Chunk<'a> {
     }
 }
 
-// TODO: builder couldn't really work due to lifetime conflicts.
-// Should be updated with `fn new(&'a str) -> Self` instead of empty
-// data at the beginnig.
-// pub struct ChunkBuilder<'a> {
-//     source_code: Option<&'a str>,
-//     style: Option<&'static str>,
-// }
-// 
-// impl<'a> ChunkBuilder<'a> {
-//     pub fn new() -> Self {
-//         Self { source_code: None, style: None }
-//     }
-// 
-//     pub fn is_clean<'s>(&'s self) -> bool {
-//         self.source_code.is_none()
-//     }
-// 
-//     pub fn style<'s>(&'s mut self, style: &'static str) -> &'s mut Self {
-//         self.style.insert(style);
-//         self
-//     }
-// 
-//     pub fn source<'s, 'b: 'a>(&'s mut self, source_code: &'b str) -> &'s mut Self {
-//         self.source_code.insert(source_code);
-//         self
-//     }
-// 
-//     /// Moves values out of the builder into new Chunk.
-//     pub fn build<'s>(&'s mut self) -> Result<Chunk<'s>, ()> {
-//         if self.source_code.is_none() {
-//             return Err(());
-//         }
-// 
-//         Ok(Chunk::new(
-//             self.source_code.take().unwrap(),
-//             self.style.take().unwrap(),
-//         ))
-//     }
-// }
+pub struct ChunkBuilder<'a> {
+    source_code: Option<&'a str>,
+    style: Option<&'static str>,
+}
+
+impl<'a> ChunkBuilder<'a> {
+    pub fn new() -> Self {
+        Self { source_code: None, style: None }
+    }
+
+    pub fn reset(&mut self) {
+        self.source_code = None;
+        self.style = None;
+    }
+
+    pub fn style(&mut self, style: &'static str) -> &mut Self {
+        self.style = Some(style);
+        self
+    }
+
+    pub fn source(&mut self, source_code: &'a str) -> &mut Self {
+        self.source_code = Some(source_code);
+        self
+    }
+
+    pub fn build(&self) -> Result<Chunk<'a>, ()> {
+        if self.source_code.is_none() {
+            return Err(());
+        }
+
+        Ok(Chunk::new(
+            self.source_code.as_ref().unwrap(),
+            self.style.as_ref().unwrap(),
+        ))
+    }
+}
